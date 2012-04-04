@@ -5,8 +5,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define YYERROR_VERBOSE 1
-
 int yylex(void);
 void yyerror(const char *str);
 
@@ -55,27 +53,30 @@ lexpr	:	IDENT					/* schreibender Variablenzugriff */
 	|	'*' unary				/* schreibender Speicherzugriff */
 	;
 
-expr	:	unary
-	|	term
-	|	term termops
+expr	:	unary	
+	|	plusterm
+	|	malterm
+	|	andterm
 	|	term LTOREQ term
 	|	term '#' term
 	;
 
-termops	:	/* empty */
-	|	termops '+' term
-	|	termops '*' term
-	|	termops AND term
+plusterm:	plusterm '+' term
+	|	term '+' term
+	;
+	
+malterm	:	malterm '*' term
+	|	term '*' term
+	;
+	
+andterm	:	andterm AND term
+	|	term AND term
 	;
 
-unary	:	unaryops unary
+unary	:	NOT unary
+	|	'-' unary
 	|	'*' unary				/* lesender Speicherzugriff */
 	|	term
-	;
-
-unaryops:	/* empty */
-	|	unaryops NOT
-	|	unaryops '-'
 	;
 
 term	:	'(' expr ')'
