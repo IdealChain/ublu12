@@ -1,6 +1,5 @@
-# parser Makefile
+# comp Makefile
 # Daniel Achleitner (0926807)
-LEX=flex
 
 MODE = debug
 
@@ -11,27 +10,37 @@ else
 	CPPFLAGS = -DNDEBUG
 endif
 
+TARGET = ag
+
 CFLAGS  += $(DEBUG) -Wall 
 LDFLAGS += $(DEBUG)
 
-parser: y.tab.o lex.yy.o
-	$(CC) $(CFLAGS) -o parser y.tab.o lex.yy.o
+all: $(TARGET)
 
-y.tab.c y.tab.h: parser.y
+oxout.y oxout.l: parser.y scanner.l
+	ox $^
+
+lex.yy.c: oxout.l y.tab.h common.h symtable.h
+	$(LEX) $<
+
+lex.yy.o: lex.yy.c y.tab.h
+	$(CC) $(CFLAGS) -c $<
+
+y.tab.c y.tab.h: oxout.y
 	$(YACC) -d --verbose $<
 
-y.tab.o: y.tab.c
-	$(CC) $(CFLAGS) -c y.tab.c
+y.tab.o: y.tab.c common.h symtable.h
+	$(CC) $(CFLAGS) -c $<
 
-lex.yy.o: lex.yy.c y.tab.h 
-	$(CC) $(CFLAGS) -c lex.yy.c
+symtable.o: symtable.c symtable.h
+	$(CC) $(CFLAGS) -c $<
 
-lex.yy.c: scanner.l y.tab.h
-	$(LEX) scanner.l
+$(TARGET): y.tab.o lex.yy.o symtable.o
+	$(CC) $(CFLAGS) -o $(TARGET) $^
 
-test: parser
-	/usr/ftp/pub/ubvl/test/parser/test
+test: ag
+	/usr/ftp/pub/ubvl/test/ag/test
 
 .PHONY: clean
 clean:
-	$(RM) *.o *.c *.output y.tab.h parser
+	$(RM) $(TARGET) *.o *.output oxout* y.tab.* lex.yy.* 
