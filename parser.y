@@ -159,10 +159,3 @@ int yywrap()
 {
 	return 1;
 }
-
-int main()
-{
-	yyparse();
-
-	return EXIT_SUCCESS;
-}

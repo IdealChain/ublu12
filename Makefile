@@ -35,7 +35,10 @@ y.tab.o: y.tab.c common.h symtable.h
 symtable.o: symtable.c symtable.h
 	$(CC) $(CFLAGS) -c $<
 
-$(TARGET): y.tab.o lex.yy.o symtable.o
+common.o: common.c common.h
+	$(CC) $(CFLAGS) -c $<
+
+$(TARGET): y.tab.o lex.yy.o symtable.o common.o
 	$(CC) $(CFLAGS) -o $(TARGET) $^
 
 test: ag
