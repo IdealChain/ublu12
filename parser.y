@@ -11,6 +11,13 @@
 int yylex(void);
 void yyerror(const char *str);
 
+/* ensures that a used symbol is defined */
+void check_defined(const struct sym *table, const char *symbol, int line);
+
+/* ensures that no collisions between variable names and label names occur
+   within the respective scope */
+void check_collisions(const struct sym *vars, const struct sym *labels);
+
 %}
 
 %start program
@@ -33,8 +40,8 @@ void yyerror(const char *str);
 @attributes { struct sym *i_labs; struct sym *s_labs; struct sym *i_flabs; 
               struct sym *i_vars; struct sym *s_vars; struct sym *i_fvars; } stats stat
 @attributes { struct sym *i_labs; struct sym *s_labs;                      } labels
-@attributes { struct sym *i_vars; struct sym *s_vars;                      } pars lastpar 
-@attributes {                                         struct sym *i_fvars; } lexpr expr plusterm multterm andterm unary term exprs lastexpr
+@attributes { struct sym *i_vars; struct sym *s_vars;                      } parlist
+@attributes {                                         struct sym *i_fvars; } lexpr expr plusterm multterm andterm unary term exprlist
 
 /* checks whether referenced labels/parameters/variables exist */
 @traversal @preorder check
@@ -48,7 +55,7 @@ program	:	/* empty */
 	|	program funcdef ';'
 	;
 
-funcdef	:	IDENT '(' pars lastpar ')' stats END	/* Funktionsdefinition */
+funcdef	:	IDENT '(' parlist ')' stats END		/* Funktionsdefinition */
 		@{
 			/* labels */
 			@i @stats.i_labs@ = NULL;
@@ -56,27 +63,22 @@ funcdef	:	IDENT '(' pars lastpar ')' stats END	/* Funktionsdefinition */
 			@print sym_print(@stats.s_labs@, "labels", @IDENT.name@);
 			
 			/* parameters / variables */
-			@i @pars.i_vars@ = NULL;
-			@i @lastpar.i_vars@ = @pars.s_vars@;
-			@i @stats.i_vars@ = @lastpar.s_vars@;
+			@i @parlist.i_vars@ = NULL;
+			@i @stats.i_vars@ = @parlist.s_vars@;
 			@i @stats.i_fvars@ = @stats.s_vars@;
 			@print sym_print(@stats.s_vars@, "variables", @IDENT.name@);
 		@}
 	;	
 
-pars	:	/* empty */				/* Parameterdefinition */
-		@{ @i @pars.s_vars@ = @pars.i_vars@; @}
-	|	pars IDENT ','
-		@{ 
-			@i @pars.1.i_vars@ = @pars.0.i_vars@; 
-			@i @pars.0.s_vars@ = sym_add(@pars.1.s_vars@, @IDENT.name@, @IDENT.lineno@);
-		@}
-	;
-
-lastpar	:	/* empty */
-		@{ @i @lastpar.s_vars@ = @lastpar.i_vars@; @}
+parlist	:	/* empty */
+		@{ @i @parlist.s_vars@ = @parlist.i_vars@; @}
 	|	IDENT
-		@{ @i @lastpar.s_vars@ = sym_add(@lastpar.i_vars@, @IDENT.name@, @IDENT.lineno@); @}
+		@{ @i @parlist.s_vars@ = sym_add(@parlist.i_vars@, @IDENT.name@, @IDENT.lineno@); @}
+	|	IDENT ',' parlist
+		@{
+			@i @parlist.1.i_vars@ = sym_add(@parlist.0.i_vars@, @IDENT.name@, @IDENT.lineno@);
+			@i @parlist.0.s_vars@ = @parlist.1.s_vars@;
+		@}
 	;
 
 stats	:	/* empty */
@@ -98,20 +100,7 @@ stats	:	/* empty */
 			@i @stats.0.s_vars@ = @stat.s_vars@;
 			
 			/* check for variable / label name collisions */
-			@check 
-			struct sym *s = @stats.0.i_fvars@;
-			while (s) {
-				struct sym *l = NULL;
-				if ((l = sym_find(@stats.0.i_flabs@, s->name))) {
-					fprintf(stderr, "error: variable '%s' (line %d) collides with label '%s' (line %d)\n",
-						s->name,
-						s->line,
-						l->name,
-						l->line);
-					ERROR_SEM;
-				}
-				s = s->next;
-			}
+			@check check_collisions(@stats.0.i_fvars@, @stats.0.i_flabs@);
 		@}
 	;
 
@@ -132,12 +121,7 @@ stat	:	RETURN expr
 	|	GOTO IDENT
 		@{ 
 			@i @stat.s_labs@ = @stat.i_labs@; 
-			@check if (!sym_find(@stat.i_flabs@, @IDENT.name@)) {
-				fprintf(stderr, "error: line %d: label '%s' not defined\n",
-					@IDENT.lineno@,
-					@IDENT.name@);
-				ERROR_SEM;
-			}
+			@check check_defined(@stat.i_flabs@, @IDENT.name@, @IDENT.lineno@);
 			@i @stat.s_vars@ = @stat.i_vars@;
 		@}
 	|	IF expr THEN stats END
@@ -169,12 +153,7 @@ stat	:	RETURN expr
 
 lexpr	:	IDENT					/* schreibender Variablenzugriff */
 		@{
-			@check if (!sym_find(@lexpr.i_fvars@, @IDENT.name@)) {
-				fprintf(stderr, "error: line %d: variable '%s' not defined\n",
-					@IDENT.lineno@,
-					@IDENT.name@);
-				ERROR_SEM;
-			}
+			@check check_defined(@lexpr.i_fvars@, @IDENT.name@, @IDENT.lineno@);
 		@}
 	|	'*' unary				/* schreibender Speicherzugriff */
 	;
@@ -209,22 +188,14 @@ term	:	'(' expr ')'
 	|	NUM
 	|	IDENT					/* Variablenverwendung */
 		@{
-			@check if (!sym_find(@term.i_fvars@, @IDENT.name@)) {
-				fprintf(stderr, "error: line %d: variable '%s' not defined\n",
-					@IDENT.lineno@,
-					@IDENT.name@);
-				ERROR_SEM;
-			}
+			@check check_defined(@term.i_fvars@, @IDENT.name@, @IDENT.lineno@);
 		@}
-	|	IDENT '(' exprs lastexpr ')'		/* Funktionsaufruf */
+	|	IDENT '(' exprlist ')'			/* Funktionsaufruf */
 	;
 
-exprs	:	/* empty */
-	|	exprs expr ','
-	;
-
-lastexpr:	/* empty */
+exprlist:	/* empty */
 	|	expr
+	|	expr ',' exprlist
 	;
 
 %%
@@ -240,4 +211,34 @@ void yyerror(const char *str)
 int yywrap()
 {
 	return 1;
+}
+
+void check_defined(const struct sym *table, const char *symbol, int line)
+{
+	if (!sym_find(table, symbol)) {
+		fprintf(stderr, "error: line %d: label or variable '%s' not defined\n",
+			line,
+			symbol);
+		ERROR_SEM;
+	}
+}
+
+void check_collisions(const struct sym *vars, const struct sym *labels)
+{
+	const struct sym *s = vars;
+	
+	while (s) {
+		const struct sym *l = NULL;
+		
+		if ((l = sym_find(labels, s->name))) {
+			fprintf(stderr, "error: variable '%s' (line %d) collides with label '%s' (line %d)\n",
+				s->name,
+				s->line,
+				l->name,
+				l->line);
+			ERROR_SEM;
+		}
+		
+		s = s->next;
+	}
 }
