@@ -44,14 +44,14 @@ DEC	&[0-9]+
 "+"		return '+';
 "#"		return '#';
 
-{DEC}	return NUM; @{ @NUM.value@ = to_int(yytext + 1, 10); @}
+{DEC}	return NUM; 	@{ @NUM.value@ = to_int(yytext + 1, 10); @}
 
-{HEX}	return NUM; @{ @NUM.value@ = to_int(yytext, 16); @}
+{HEX}	return NUM; 	@{ @NUM.value@ = to_int(yytext, 16); @}
 
-{ID}	return IDENT; @{ 
-			@IDENT.name@ = lexeme(yytext); 
-			@IDENT.lineno@ = yylineno;
-		@}
+{ID}	return IDENT; 	@{ 
+				@IDENT.name@ = lexeme(yytext); 
+				@IDENT.lineno@ = yylineno;
+			@}
 
 [ \t\n]	; /* whitespace be-gone */
 .	error(); /* everything else */

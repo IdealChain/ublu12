@@ -15,7 +15,7 @@ struct sym *sym_add(struct sym *table, char *name, int lineno)
 	/* check whether a symbol with that name already exists */
 	const struct sym *coll = sym_find(table, name);
 	if (coll) {
-		fprintf(stderr, "error: line %d: symbol '%s' already defined (line %d)", 
+		fprintf(stderr, "error: line %d: symbol '%s' already defined (line %d)\n", 
 			lineno, name, coll->line);
 		ERROR_SEM;
 	}
