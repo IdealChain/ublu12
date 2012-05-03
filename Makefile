@@ -15,6 +15,10 @@ TARGET = ag
 CFLAGS  += $(DEBUG) -Wall 
 LDFLAGS += $(DEBUG)
 
+# turn off warnings for ox-generated lexer/parser
+LEX_NOWARN = -Wno-unused-variable -Wno-unused-function
+PAR_NOWARN  = -Wno-unused-variable -Wno-implicit -Wno-format -Wno-parentheses
+
 all: $(TARGET)
 
 oxout.y oxout.l: parser.y scanner.l
@@ -24,13 +28,13 @@ lex.yy.c: oxout.l y.tab.h common.h symtable.h
 	$(LEX) $<
 
 lex.yy.o: lex.yy.c y.tab.h
-	$(CC) $(CFLAGS) -c $<
+	$(CC) $(CFLAGS) $(LEX_NOWARN) -c $<
 
 y.tab.c y.tab.h: oxout.y
 	$(YACC) -d --verbose $<
 
 y.tab.o: y.tab.c common.h symtable.h
-	$(CC) $(CFLAGS) -c $<
+	$(CC) $(CFLAGS) $(PAR_NOWARN) -c $<
 
 symtable.o: symtable.c symtable.h
 	$(CC) $(CFLAGS) -c $<
