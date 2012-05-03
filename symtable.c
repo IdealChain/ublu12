@@ -8,6 +8,8 @@
 #include "common.h"
 #include "symtable.h"
 
+int param_verbose;
+
 struct sym *sym_add(struct sym *table, char *name, int lineno)
 {
 	assert(name);
@@ -51,6 +53,9 @@ const struct sym *sym_find(const struct sym *table, const char *name)
 
 void sym_print(const struct sym *table, const char *caption, const char *subject)
 {
+	if (!param_verbose)
+		return;
+
 	assert(caption);
 	const struct sym *s = table;
 	

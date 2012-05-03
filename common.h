@@ -7,4 +7,6 @@
 #define ERROR_SEM exit(3)
 #define ERROR_MEM exit(4)
 
+extern int param_verbose;
+
 #endif

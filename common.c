@@ -4,9 +4,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <malloc.h>
 
 #include "common.h"
 
+int param_verbose;
 int yyparse(void);
 
 void usage(char *command) 
@@ -21,6 +23,7 @@ void usage(char *command)
 int main(int argc, char **argv)
 {
 	char c;
+	param_verbose = 0;
 	
 	while ((c = getopt(argc, argv, "hv?")) != EOF)
 	{
@@ -31,9 +34,7 @@ int main(int argc, char **argv)
 				usage(argv[0]);
 				exit(EXIT_SUCCESS);
 			case 'v':
-				//todo: enable verbose mode
-				fputs("not yet implemented: verbose mode\n", stderr);
-				exit(EXIT_FAILURE);
+				param_verbose = 1;
 				break;
 			default:
 				break;
@@ -41,6 +42,9 @@ int main(int argc, char **argv)
 	}
 
 	yyparse();
+	
+	if (param_verbose)
+		fprintf(stderr, "used memory: %dkB\n", mallinfo().uordblks / 1024);
 
 	return EXIT_SUCCESS;
 }
