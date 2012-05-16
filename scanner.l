@@ -25,7 +25,7 @@ DEC	&[0-9]+
 "end"		return END;
 "return"	return RETURN;
 "goto"		return GOTO;
-"if"		return IF;
+"if"		return IF;	@{ @IF.lineno@ = yylineno; @}
 "then"		return THEN;
 "var"		return VAR;
 "not"		return NOT;
@@ -66,10 +66,7 @@ static unsigned long to_int(const char* s, int base)
 static char* lexeme(const char *str)
 {
 	char *lexstr = malloc(strlen(str) + 1);
-	if (!lexstr) {
-		fputs("scanner error: not enough memory\n", stderr);
-		ERROR_MEM;
-	}
+	MALLOC_CHECK(lexstr)
 
 	strcpy(lexstr, str);
 	return lexstr;

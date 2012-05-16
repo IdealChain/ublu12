@@ -1,0 +1,45 @@
+%{
+/* matcher.bfe, Daniel Achleitner (0926807) */
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <assert.h>
+
+#include "tree.h"
+#include "codegen.h"
+
+/* symbols below must be kept in sync with tree.h */
+%}
+%term opCONST=1 opVAR=2 opPLUS=3 opMULT=4 opAND=5 opNOT=6 opNEG=7 opLTOREQ=8 opNEQ=9 opRADR=10
+%start expr
+%%
+expr:	reg               # 0
+
+reg:	opPLUS(reg,reg)   # 1 # cg_plus(bnode, kids[0], kids[1]);
+con:	opPLUS(con,con)   # 0 # bnode->value = kids[0]->value + kids[1]->value;
+
+reg:	opMULT(reg,reg)   # 1 # cg_mult(bnode, kids[0], kids[1]);
+con:	opMULT(con,con)   # 1 # bnode->value = kids[0]->value * kids[1]->value;
+
+reg:	opAND(reg,reg)    # 1 # cg_and(bnode, kids[0], kids[1]);
+con:	opAND(con,con)    # 0 # bnode->value = kids[0]->value & kids[1]->value;
+
+reg:	opNOT(reg)        # 1 # cg_not(bnode, kids[0]);
+con:	opNOT(con)        # 0 # bnode->value = ~kids[0]->value;
+
+reg:	opNEG(reg)        # 1 # cg_neg(bnode, kids[0]);
+con:	opNEG(con)        # 0 # bnode->value = -kids[0]->value;
+
+reg:	opLTOREQ(reg,reg) # 1 # cg_set_cc(bnode, kids[0], kids[1], "le");
+con:	opLTOREQ(con,con) # 0 # bnode->value = kids[0]->value <= kids[1]->value;
+
+reg:	opNEQ(reg,reg)    # 1 # cg_set_cc(bnode, kids[0], kids[1], "ne");
+con:	opNEQ(con,con)    # 0 # bnode->value = kids[0]->value != kids[1]->value;
+
+reg:	opRADR(reg)       # 1 # cg_radr(bnode, kids[0]);
+
+reg:	con               # 1 # cg_const(bnode);
+reg:	opVAR             # 1 # cg_var(bnode);
+
+con:	opCONST           # 0
+%%

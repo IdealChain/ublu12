@@ -6,7 +6,14 @@
 #define ERROR_SYN exit(2)
 #define ERROR_SEM exit(3)
 #define ERROR_MEM exit(4)
+#define ERROR_INT exit(5)
 
 extern int param_verbose;
+
+#define MALLOC_CHECK(t) \
+	if (!t) { \
+		fputs("error: not enough memory\n", stderr); \
+		ERROR_MEM; \
+	}
 
 #endif

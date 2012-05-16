@@ -10,16 +10,26 @@ else
 	CPPFLAGS = -DNDEBUG
 endif
 
-TARGET = ag
+TARGET = codea
 
 CFLAGS  += $(DEBUG) -Wall 
 LDFLAGS += $(DEBUG)
 
 # turn off warnings for ox-generated lexer/parser
 LEX_NOWARN = -Wno-unused-variable -Wno-unused-function
-PAR_NOWARN  = -Wno-unused-variable -Wno-implicit -Wno-format -Wno-parentheses
+PAR_NOWARN = -Wno-unused-variable -Wno-implicit -Wno-format -Wno-parentheses
 
-all: $(TARGET)
+# not generated and generated C source files
+SRCS = common.c symtable.c tree.c codegen.c codegen_reg.c
+GENSRCS = lex.yy.c y.tab.c matcher.c
+
+ALLSRCS = $(SRCS) $(GENSRCS)
+OBJS    = $(SRCS:%.c=%.o)
+ALLOBJS = $(ALLSRCS:%.c=%.o)
+DEPS    = $(ALLSRCS:%.c=%.dep)
+
+$(TARGET): $(ALLOBJS)
+	$(CC) -o $@ $^
 
 oxout.y oxout.l: parser.y scanner.l
 	ox $^
@@ -27,7 +37,7 @@ oxout.y oxout.l: parser.y scanner.l
 lex.yy.c: oxout.l y.tab.h common.h symtable.h
 	$(LEX) $<
 
-lex.yy.o: lex.yy.c y.tab.h
+lex.yy.o: lex.yy.c
 	$(CC) $(CFLAGS) $(LEX_NOWARN) -c $<
 
 y.tab.c y.tab.h: oxout.y
@@ -36,18 +46,29 @@ y.tab.c y.tab.h: oxout.y
 y.tab.o: y.tab.c common.h symtable.h
 	$(CC) $(CFLAGS) $(PAR_NOWARN) -c $<
 
-symtable.o: symtable.c symtable.h
-	$(CC) $(CFLAGS) -c $<
+matcher.c: matcher.bfe
+	bfe matcher.bfe | iburg > matcher.c
 
-common.o: common.c common.h
-	$(CC) $(CFLAGS) -c $<
+%.dep: %.c
+	gcc -MM $< > $@
+	
+-include $(DEPS)
 
-$(TARGET): y.tab.o lex.yy.o symtable.o common.o
-	$(CC) $(CFLAGS) -o $(TARGET) $^
-
-test: ag
-	/usr/ftp/pub/ubvl/test/ag/test
-
-.PHONY: clean
+.PHONY: clean test
 clean:
-	$(RM) $(TARGET) *.o *.output oxout* y.tab.* lex.yy.* 
+	$(RM) $(TARGET) $(GENSRCS) $(DEPS) $(ALLOBJS) *.output oxout.* func func.1.o func.2.o
+	
+test: $(TARGET)
+	/usr/ftp/pub/ubvl/test/$(TARGET)/test
+
+.PRECIOUS: func
+func: func.1.o func.2.o
+	$(CC) -o $@ $^
+	./$@
+
+func.1.o: func.0 $(TARGET)
+	./$(TARGET) -v < $<
+	./$(TARGET) < $< | as -o $@
+
+func.2.o: func.c
+	$(CC) -c -o $@ $<

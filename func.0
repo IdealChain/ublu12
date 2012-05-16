@@ -1,0 +1,7 @@
+func(a)
+	 return (not (a =< 0));
+end;
+
+func2(a)
+	 return (not (a =< 0));
+end;

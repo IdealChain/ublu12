@@ -23,23 +23,21 @@ struct sym *sym_add(struct sym *table, char *name, int lineno)
 	}
 
 	struct sym *s = malloc(sizeof(*s));
-	if (!s) {
-		fputs("not enough memory\n", stderr);
-		ERROR_MEM;
-	}
+	MALLOC_CHECK(s)
+	
+	memset(s, 0, sizeof(*s));
 	
 	s->name = name;
 	s->line = lineno;
-	
-	s->next = table; /* may be NULL */
+	s->next = table; /* add new element at the beginning of the list; may be NULL */
 	
 	return s;
 }
 
-const struct sym *sym_find(const struct sym *table, const char *name)
+struct sym *sym_find(struct sym *table, const char *name)
 {
 	assert(name);
-	const struct sym *s = table;
+	struct sym *s = table;
 
 	while (s) {
 		if (!strcmp(name, s->name))
@@ -63,10 +61,11 @@ void sym_print(const struct sym *table, const char *caption, const char *subject
 	
 	int i = 0;
 	while (s) {
-		fprintf(stderr, "%2d symbol: %s (line %2d)\n", 
-			i, s->name, s->line);
-		i++;
 		
+		fprintf(stderr, "%2d symbol: %8s, line: %2d,  refcount: %2d\n", 
+			i, s->name, s->line, s->refcount);
+		
+		i++;
 		s = s->next;
 	}
 	

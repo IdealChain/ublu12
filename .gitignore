@@ -1,8 +1,14 @@
 scanner
 parser
 ag
+codea
+codeb
+gesamt
+func
 *.o
 *.output
 oxout*
 y.tab.*
 lex.yy.*
+*.dep
+matcher.c
