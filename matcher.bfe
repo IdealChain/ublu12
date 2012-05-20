@@ -16,18 +16,36 @@
 expr:	reg               # 0
 
 reg:	opPLUS(reg,reg)   # 1 # cg_plus(bnode, kids[0], kids[1]);
+reg:	opPLUS(reg,con)   # 1 # cg_plus_con(bnode, kids[0], kids[1]->value);
+reg:	opPLUS(con,reg)   # 1 # cg_plus_con(bnode, kids[1], kids[0]->value);
 con:	opPLUS(con,con)   # 0 # bnode->value = kids[0]->value + kids[1]->value;
 
+reg:	opPLUS(opPLUS(reg,con),con) # 1 # cg_plus_con(bnode, bnode->kids[0]->kids[0], bnode->kids[0]->kids[1]->value + bnode->kids[1]->value);
+reg:	opPLUS(opPLUS(con,reg),con) # 1 # cg_plus_con(bnode, bnode->kids[0]->kids[1], bnode->kids[0]->kids[0]->value + bnode->kids[1]->value);
+reg:	opPLUS(con,opPLUS(reg,con)) # 1 # cg_plus_con(bnode, bnode->kids[1]->kids[0], bnode->kids[1]->kids[1]->value + bnode->kids[0]->value);
+reg:	opPLUS(con,opPLUS(con,reg)) # 1 # cg_plus_con(bnode, bnode->kids[1]->kids[1], bnode->kids[1]->kids[0]->value + bnode->kids[0]->value);
+
 reg:	opMULT(reg,reg)   # 1 # cg_mult(bnode, kids[0], kids[1]);
-con:	opMULT(con,con)   # 1 # bnode->value = kids[0]->value * kids[1]->value;
+reg:	opMULT(reg,con)   # 1 # cg_mult_con(bnode, kids[0], kids[1]->value);
+reg:	opMULT(con,reg)   # 1 # cg_mult_con(bnode, kids[1], kids[0]->value);
+con:	opMULT(con,con)   # 0 # bnode->value = kids[0]->value * kids[1]->value;
+
+reg:	opMULT(opMULT(reg,con),con) # 1 # cg_mult_con(bnode, bnode->kids[0]->kids[0], bnode->kids[0]->kids[1]->value * bnode->kids[1]->value);
+reg:	opMULT(opMULT(con,reg),con) # 1 # cg_mult_con(bnode, bnode->kids[0]->kids[1], bnode->kids[0]->kids[0]->value * bnode->kids[1]->value);
+reg:	opMULT(con,opMULT(reg,con)) # 1 # cg_mult_con(bnode, bnode->kids[1]->kids[0], bnode->kids[1]->kids[1]->value * bnode->kids[0]->value);
+reg:	opMULT(con,opMULT(con,reg)) # 1 # cg_mult_con(bnode, bnode->kids[1]->kids[1], bnode->kids[1]->kids[0]->value * bnode->kids[0]->value);
 
 reg:	opAND(reg,reg)    # 1 # cg_and(bnode, kids[0], kids[1]);
+reg:	opAND(reg,con)    # 1 # cg_and_con(bnode, kids[0], kids[1]->value);
+reg:	opAND(con,reg)    # 1 # cg_and_con(bnode, kids[1], kids[0]->value);
 con:	opAND(con,con)    # 0 # bnode->value = kids[0]->value & kids[1]->value;
 
 reg:	opNOT(reg)        # 1 # cg_not(bnode, kids[0]);
+reg:	opNOT(opNOT(reg)) # 0 # bnode->reg = kids[0]->reg;
 con:	opNOT(con)        # 0 # bnode->value = ~kids[0]->value;
 
 reg:	opNEG(reg)        # 1 # cg_neg(bnode, kids[0]);
+reg:	opNEG(opNEG(reg)) # 0 # bnode->reg = kids[0]->reg;
 con:	opNEG(con)        # 0 # bnode->value = -kids[0]->value;
 
 reg:	opLTOREQ(reg,reg) # 1 # cg_set_cc(bnode, kids[0], kids[1], "le");

@@ -139,6 +139,13 @@ void reg_free_nonvar(struct reg *except)
 	}
 }
 
+int reg_istemp(struct reg *r)
+{
+	assert(r);
+	
+	return (BUSY(r) && !r->symbol);
+}
+
 void reg_restore_callee()
 {
 	int i;

@@ -22,12 +22,16 @@ void reg_free(struct reg *r);
    with one possible exception, if not NULL. */
 void reg_free_nonvar(struct reg *except);
 
+/* gets whether a register is temporary assigned */
+int reg_istemp(struct reg *r);
+
 /* restore all callee saved registers */
 void reg_restore_callee();
 
 /* gets the function result register */
 const struct reg *const reg_result();
 
+/* the code generator functions */
 void cg_program(struct func *fs);
 void cg_function(struct func *f);
 void cg_stat(struct stat *s);
@@ -41,8 +45,11 @@ void cg_stat_memass(struct stat *s);
 
 /* iburg called expression generators */
 void cg_plus(struct node *b, struct node *l, struct node *r);
+void cg_plus_con(struct node *b, struct node *l, long con);
 void cg_mult(struct node *b, struct node *l, struct node *r);
+void cg_mult_con(struct node *b, struct node *l, long con);
 void cg_and(struct node *b, struct node *l, struct node *r);
+void cg_and_con(struct node *b, struct node *l, long con);
 void cg_not(struct node *b, struct node *l);
 void cg_neg(struct node *b, struct node *l);
 void cg_set_cc(struct node *b, struct node *l, struct node *r, char *cc);

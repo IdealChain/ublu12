@@ -137,36 +137,117 @@ void cg_stat_memass(struct stat *s)
 
 void cg_plus(struct node *b, struct node *l, struct node *r)
 {
-	b->reg = reg_alloc();
-	printf("\tmovq\t%s, %s\n", REG(l), REG(b));
-	printf("\taddq\t%s, %s\n", REG(r), REG(b));
+	struct node *src = r;
+	
+	if (reg_istemp(l->reg)) {
+	
+		b->reg = l->reg;
+		
+	} else if (reg_istemp(r->reg)) {
+	
+		b->reg = r->reg;
+		src = l;
+		
+	} else {
+	
+		b->reg = reg_alloc();
+		printf("\tmovq\t%s, %s\n", REG(l), REG(b));
+	}
+	
+	printf("\taddq\t%s, %s\n", REG(src), REG(b));
+}
+
+void cg_plus_con(struct node *b, struct node *l, long con)
+{
+	b->reg = (reg_istemp(l->reg) ? l->reg : reg_alloc());
+	
+	if (b->reg != l->reg)
+		printf("\tmovq\t%s, %s\n", REG(l), REG(b));
+	
+	printf("\taddq\t$%ld, %s\n", con, REG(b));
 }
 
 void cg_mult(struct node *b, struct node *l, struct node *r)
 {
-	b->reg = reg_alloc();
-	printf("\tmovq\t%s, %s\n", REG(l), REG(b));
-	printf("\timulq\t%s, %s\n", REG(r), REG(b));
+	struct node *src = r;
+	
+	if (reg_istemp(l->reg)) {
+	
+		b->reg = l->reg;
+		
+	} else if (reg_istemp(r->reg)) {
+	
+		b->reg = r->reg;
+		src = l;
+		
+	} else {
+	
+		b->reg = reg_alloc();
+		printf("\tmovq\t%s, %s\n", REG(l), REG(b));
+	}
+	
+	printf("\timulq\t%s, %s\n", REG(src), REG(b));
+}
+
+void cg_mult_con(struct node *b, struct node *l, long con)
+{
+	b->reg = (reg_istemp(l->reg) ? l->reg : reg_alloc());
+	
+	if (b->reg != l->reg)
+		printf("\tmovq\t%s, %s\n", REG(l), REG(b));
+	
+	printf("\timulq\t$%ld, %s\n", con, REG(b));
 }
 
 void cg_and(struct node *b, struct node *l, struct node *r)
 {
-	b->reg = reg_alloc();
-	printf("\tmovq\t%s, %s\n", REG(l), REG(b));
-	printf("\tandq\t%s, %s\n", REG(r), REG(b));
+	struct node *src = r;
+	
+	if (reg_istemp(l->reg)) {
+	
+		b->reg = l->reg;
+		
+	} else if (reg_istemp(r->reg)) {
+	
+		b->reg = r->reg;
+		src = l;
+		
+	} else {
+	
+		b->reg = reg_alloc();
+		printf("\tmovq\t%s, %s\n", REG(l), REG(b));
+	}
+	
+	printf("\tandq\t%s, %s\n", REG(src), REG(b));
+}
+
+void cg_and_con(struct node *b, struct node *l, long con)
+{
+	b->reg = (reg_istemp(l->reg) ? l->reg : reg_alloc());
+	
+	if (l->reg != b->reg)
+		printf("\tmovq\t%s, %s\n", REG(l), REG(b));
+		
+	printf("\tandq\t$%ld, %s\n", con, REG(b));
 }
 
 void cg_not(struct node *b, struct node *l)
 {
-	b->reg = reg_alloc();
-	printf("\tmovq\t%s, %s\n", REG(l), REG(b));
+	b->reg = (reg_istemp(l->reg) ? l->reg : reg_alloc());
+	
+	if (l->reg != b->reg)
+		printf("\tmovq\t%s, %s\n", REG(l), REG(b));
+		
 	printf("\tnotq\t%s\n", REG(b));
 }
 
 void cg_neg(struct node *b, struct node *l)
 {
-	b->reg = reg_alloc();
-	printf("\tmovq\t%s, %s\n", REG(l), REG(b));
+	b->reg = (reg_istemp(l->reg) ? l->reg : reg_alloc());
+	
+	if (l->reg != b->reg)
+		printf("\tmovq\t%s, %s\n", REG(l), REG(b));
+		
 	printf("\tnegq\t%s\n", REG(b));
 }
 
