@@ -61,11 +61,9 @@ struct stat *stat_add_return(struct stat *list, struct node *expr)
 
 struct stat *stat_add_goto(struct stat *list, struct sym *label)
 {
-	assert(label);
-	
 	struct stat *s = stat_alloc();
 	s->type = statGOTO;
-	s->data.label = label;
+	s->data.label = label;  /* may be NULL (if label is not defined -> check traversal not run yet) */
 	
 	return stat_add(list, s);
 }
