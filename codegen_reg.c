@@ -6,7 +6,8 @@
 #include <assert.h>
 
 #include "common.h"
-#include "tree.h"
+#include "exprtree.h"
+#include "stmttree.h"
 #include "codegen.h"
 
 static struct reg regs[] = {

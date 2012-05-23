@@ -5,8 +5,6 @@
 #include <string.h>
 #include <assert.h>
 
-#include "common.h"
-#include "tree.h"
 #include "codegen.h"
 
 int param_verbose;

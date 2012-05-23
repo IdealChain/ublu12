@@ -7,7 +7,8 @@
 
 #include "common.h"
 #include "symtable.h"
-#include "tree.h"
+#include "exprtree.h"
+#include "stmttree.h"
 #include "codegen.h"
 
 int yylex(void);

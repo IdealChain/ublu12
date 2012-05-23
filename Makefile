@@ -20,7 +20,7 @@ LEX_NOWARN = -Wno-unused-variable -Wno-unused-function
 PAR_NOWARN = -Wno-unused-variable -Wno-implicit -Wno-format -Wno-parentheses
 
 # not generated and generated C source files
-SRCS = common.c symtable.c tree.c codegen.c codegen_reg.c
+SRCS = common.c symtable.c stmttree.c codegen.c codegen_reg.c output.c
 GENSRCS = lex.yy.c y.tab.c matcher.c
 
 ALLSRCS = $(SRCS) $(GENSRCS)

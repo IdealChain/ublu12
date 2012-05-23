@@ -1,12 +1,11 @@
-/* tree.c, Daniel Achleitner (0926807) */
+/* stmttree.c, Daniel Achleitner (0926807) */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
 
-#include "common.h"
-#include "tree.h"
+#include "stmttree.h"
 
 struct node* gen_node(int op, struct node *left, struct node *right, long value, struct sym* symbol)
 {

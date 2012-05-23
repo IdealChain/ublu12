@@ -5,7 +5,7 @@
 #include <string.h>
 #include <assert.h>
 
-#include "tree.h"
+#include "exprtree.h"
 #include "codegen.h"
 
 /* symbols below must be kept in sync with tree.h */

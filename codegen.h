@@ -4,7 +4,8 @@
 
 #include "common.h"
 #include "symtable.h"
-#include "tree.h"
+#include "exprtree.h"
+#include "stmttree.h"
 
 /* allocates a free register */
 struct reg *reg_alloc();
