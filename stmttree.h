@@ -7,10 +7,12 @@
 /* statement tree, used for code generation */
 enum stat_type {
 	statRETURN,
+	statLABEL,
 	statGOTO,
 	statIF,
 	statVARDEF,
-	statMEMASS
+	statMEMASS,
+	statEVAL
 };
 
 struct stat {
@@ -29,10 +31,12 @@ struct stat {
 
 /* methods to add new statements to list */
 struct stat *stat_add_return(struct stat *list, struct node *expr);
+struct stat *stat_add_label(struct stat *list, struct sym *label);
 struct stat *stat_add_goto(struct stat *list, struct sym *label);
 struct stat *stat_add_if(struct stat *list, struct node *expr, struct stat *body);
 struct stat *stat_add_vardef(struct stat *list, struct node *expr, struct sym *var);
 struct stat *stat_add_memass(struct stat *list, struct node *expr, struct node *adr);
+struct stat *stat_add_eval(struct stat *list, struct node *expr);
 
 /* function list, used for code generation */
 struct func {

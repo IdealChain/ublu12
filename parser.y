@@ -53,7 +53,8 @@ void check_collisions(struct sym *vars, struct sym *labels);
 @attributes { struct sym *i_labs; struct sym *s_labs; struct sym *i_flabs; 
               struct sym *i_vars; struct sym *s_vars; struct sym *i_fvars;                 
               struct stat *i_ss;  struct stat *s_ss;                                           } stats stat
-@attributes { struct sym *i_labs; struct sym *s_labs;                                          } labels
+@attributes { struct sym *i_labs; struct sym *s_labs;
+              struct stat *i_ss;  struct stat *s_ss;  struct sym *i_flabs;                     } labels
 @attributes { struct sym *i_vars; struct sym *s_vars;                                          } parlist
 @attributes { struct stat *i_ss;  struct stat *s_ss;  struct sym *i_fvars; struct node *rexpr; } lexpr
 @attributes {                                         struct sym *i_fvars;                     } exprlist
@@ -140,7 +141,8 @@ stats	:	/* empty */
 			
 			/* statements */
 			@i @stats.1.i_ss@ = @stats.0.i_ss@;
-			@i @stat.i_ss@ = @stats.1.s_ss@;
+			@i @labels.i_ss@ = @stats.1.s_ss@;
+			@i @stat.i_ss@ = @labels.s_ss@;
 			@i @stats.0.s_ss@ = @stat.s_ss@;
 			
 			/* check for variable / label name collisions */
@@ -149,11 +151,19 @@ stats	:	/* empty */
 	;
 
 labels	:	/* empty */
-		@{ @i @labels.s_labs@ = @labels.i_labs@; @}
+		@{ 
+			@i @labels.s_labs@ = @labels.i_labs@; 
+			@i @labels.s_ss@ = @labels.i_ss@;
+		@}
 	|	labels IDENT ':'
 		@{
+			/* label symbol */
 			@i @labels.1.i_labs@ = @labels.0.i_labs@;
 			@i @labels.0.s_labs@ = sym_add(@labels.1.s_labs@, @IDENT.name@, @IDENT.lineno@);
+			
+			/* label statement */
+			@i @labels.1.i_ss@ = @labels.0.i_ss@;
+			@i @labels.0.s_ss@ = stat_add_label(@labels.1.s_ss@, sym_find(@labels.0.i_flabs@, @IDENT.name@));
 		@}
 	;
 
@@ -208,9 +218,12 @@ stat	:	RETURN expr
 		@}
 	|	term
 		@{ 
+			/* labels / parameters / variables */
 			@i @stat.s_labs@ = @stat.i_labs@; 
 			@i @stat.s_vars@ = @stat.i_vars@;
-			@i @stat.s_ss@ = @stat.i_ss@;   /* nothing to evaluate (TODO when adding functions) */
+			
+			/* statements: add term evaluation statement */
+			@i @stat.s_ss@ = stat_add_eval(@stat.i_ss@, @term.n@);
 		@}
 	;
 

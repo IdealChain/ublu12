@@ -33,9 +33,17 @@ struct reg {
 	struct sym *symbol;     /* associated variable symbol or NULL, if register is not used or temporary */
 };
 
+/* list of generated assembler labels */
+struct label {
+	unsigned int nr;        /* label number in outputted asm code (unique) */
+	struct sym *symbol;     /* input code label, or NULL, if its generated implicitely */
+	
+	struct label *next;     /* next element in linked list */
+};
+
 /* convenience macros */
-#define REG(p)  (p)->reg->name
-#define REGB(p) (p)->reg->name_b
+#define REG(p)   (p)->reg->name
+#define REGB(p)  (p)->reg->name_b
 
 #define BURM(p) burm_label(p); \
                 burm_reduce(p, 1);

@@ -13,7 +13,7 @@ struct reg *reg_alloc();
 /* resets the current register state and assigns registers to function parameters */
 void reg_new_function(struct sym *par);
 
-/* gets a register associated to a variable. if there isn't one yet, a new one is allocated */
+/* gets a register associated to a variable; a new one will be allocated if necessary */
 struct reg *reg_get_var(struct sym *var);
 
 /* returns a register (marks it as free again) */
@@ -32,17 +32,27 @@ void reg_restore_callee();
 /* gets the function result register */
 const struct reg *const reg_result();
 
+
+/* gets an asm label for a input label; will be generated if necessary */
+struct label *label_get(struct sym *lab);
+
+/* gets an implicitely created label, e.g. for an if statement */
+struct label *label_anon();
+
+
 /* the code generator functions */
 void cg_program(struct func *fs);
 void cg_function(struct func *f);
 void cg_stat(struct stat *s);
-int cg_stats(struct stat *ss);
+void cg_stats(struct stat *ss);
 
 void cg_stat_return(struct stat *s);
+void cg_stat_label(struct stat *s);
 void cg_stat_goto(struct stat *s);
 void cg_stat_if(struct stat *s);
 void cg_stat_vardef(struct stat *s);
 void cg_stat_memass(struct stat *s);
+void cg_stat_eval(struct stat *s);
 
 /* iburg called expression generators */
 void cg_plus(struct node *b, struct node *l, struct node *r);

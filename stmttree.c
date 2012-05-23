@@ -58,6 +58,15 @@ struct stat *stat_add_return(struct stat *list, struct node *expr)
 	return stat_add(list, s);
 }
 
+struct stat *stat_add_label(struct stat *list, struct sym *label)
+{
+	struct stat *s = stat_alloc();
+	s->type = statLABEL;
+	s->data.label = label; 
+	
+	return stat_add(list, s);
+}
+
 struct stat *stat_add_goto(struct stat *list, struct sym *label)
 {
 	struct stat *s = stat_alloc();
@@ -100,6 +109,17 @@ struct stat *stat_add_memass(struct stat *list, struct node *expr, struct node *
 	s->type = statMEMASS;
 	s->expr = expr;
 	s->data.adr = adr;
+	
+	return stat_add(list, s);
+}
+
+struct stat *stat_add_eval(struct stat *list, struct node *expr)
+{
+	assert(expr);
+	
+	struct stat *s = stat_alloc();
+	s->type = statEVAL;
+	s->expr = expr;
 	
 	return stat_add(list, s);
 }

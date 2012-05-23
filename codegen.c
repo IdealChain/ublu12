@@ -9,6 +9,10 @@
 
 int param_verbose;
 
+/* a label that will be placed at the end of the current function
+ * (for return statements, before restoring of callee registers) */
+static struct label *func_end;
+
 void cg_program(struct func *fs)
 {
 	while (fs) {
@@ -41,29 +45,32 @@ void cg_function(struct func *f)
 		}
 	}
 	
+	/* clear anonymous function ending register */
+	func_end = NULL;
+	
 	/* generate statements */
-	int had_return = cg_stats(f->body);
+	cg_stats(f->body);
 	
 	/* ensure that the return register gets a value */
-	if (!had_return)
-		printf("\tmovq\t$0, %s\n", reg_result()->name);
+	printf("\tmovq\t$0, %s\n", reg_result()->name);
 	
+	if (func_end)
+		printf(".L%u:\n", func_end->nr);
+		
 	reg_restore_callee();
 	printf("\tret\n\n");
 }
 
-int cg_stats(struct stat *ss)
+void cg_stats(struct stat *ss)
 {
 	while (ss) {
 		cg_stat(ss);
 		
-		if (ss->type == statRETURN)
-			return 1;
+		/* TODO: everything behind a return is dead code,
+		 * if there is no label to jump to*/
 		
 		ss = ss->next;
 	}
-	
-	return 0;
 }
 
 void cg_stat(struct stat *s)
@@ -71,6 +78,9 @@ void cg_stat(struct stat *s)
 	switch (s->type) {
 		case statRETURN:
 			cg_stat_return(s);
+			break;
+		case statLABEL:
+			cg_stat_label(s);
 			break;
 		case statGOTO:
 			cg_stat_goto(s);
@@ -84,6 +94,9 @@ void cg_stat(struct stat *s)
 		case statMEMASS:
 			cg_stat_memass(s);
 			break;
+		case statEVAL:
+			cg_stat_eval(s);
+			break;
 		default:
 			assert(0);
 	}
@@ -93,23 +106,74 @@ void cg_stat(struct stat *s)
 
 void cg_stat_return(struct stat *s)
 {
+	assert(s);
+	assert(s->expr);
+	
 	struct node *expr = s->expr;
 	BURM(expr);
 
 	if (expr->reg && expr->reg != reg_result())
 		printf("\tmovq\t%s, %s\n", REG(expr), reg_result()->name);
+	
+	if (!func_end)
+		func_end = label_anon();
+	
+	printf("\tjmp\t.L%u\n", func_end->nr);
+}
+
+void cg_stat_label(struct stat *s)
+{
+	assert(s);
+	assert(s->data.label);
+	
+	struct label *l = label_get(s->data.label);
+	
+	if (param_verbose)
+		printf("# LABEL %s: .L%u\n", l->symbol->name, l->nr);
+	
+	printf(".L%u:\n", l->nr);
 }
 
 void cg_stat_goto(struct stat *s)
 {
+	assert(s);
+	assert(s->data.label);
+	
+	struct label *l = label_get(s->data.label);	
+	printf("\tjmp\t.L%u\n", l->nr);
 }
 
 void cg_stat_if(struct stat *s)
 {
+	assert(s);
+	assert(s->expr);
+	assert(s->data.body);
+	
+	struct label *l_end = label_anon();
+	
+	/* evaluate condition */
+	BURM(s->expr);
+	
+	struct reg *cond = (reg_istemp(s->expr->reg) ? s->expr->reg : reg_alloc());
+	if (cond != s->expr->reg) 
+		printf("\tmovq\t%s, %s\n", s->expr->reg->name, cond->name);
+	
+	printf("\ttestb\t$1, %s\n", cond->name_b);
+	printf("\tje\t.L%u\n", l_end->nr);
+	
+	/* if body */
+	cg_stats(s->data.body);
+	
+	/* end label */
+	printf(".L%u:\n", l_end->nr);
 }
 
 void cg_stat_vardef(struct stat *s)
 {
+	assert(s);
+	assert(s->expr);
+	assert(s->data.var);
+	
 	struct node *expr = s->expr;
 	BURM(expr);
 	
@@ -122,6 +186,10 @@ void cg_stat_vardef(struct stat *s)
 
 void cg_stat_memass(struct stat *s)
 {
+	assert(s);
+	assert(s->expr);
+	assert(s->data.adr);
+	
 	struct node *expr = s->expr;
 	BURM(expr);
 	reg_free_nonvar(expr->reg); /* intermediate flushing :) */
@@ -132,6 +200,12 @@ void cg_stat_memass(struct stat *s)
 	printf("\tmovq\t%s, (%s)\n", REG(expr), REG(adr));
 }
 
+void cg_stat_eval(struct stat *s)
+{
+	assert(s);
+	
+	BURM(s->expr);
+}
 
 void cg_plus(struct node *b, struct node *l, struct node *r)
 {
