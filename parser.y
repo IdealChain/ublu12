@@ -284,7 +284,7 @@ term	:	'(' expr ')'
 			@i @term.n@ = gen_node(opVAR, NULL, NULL, 0, sym_find(@term.i_fvars@, @IDENT.name@));
 		@}
 	|	IDENT '(' exprlist ')'			/* Funktionsaufruf */
-		@{ @i @term.n@ = NULL; @}
+		@{ @i @term.n@ = gen_node(opCONST, NULL, NULL, 0, NULL); @}
 	;
 
 exprlist:	/* empty */
