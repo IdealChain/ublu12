@@ -4,4 +4,7 @@
 
 #include "common.h"
 
+struct instr {
+};
+
 #endif

@@ -3,15 +3,15 @@
 #define SYMTABLE_H
 
 struct sym {
-	char *name;   /* name of symbol */
-	int line;     /* line of definition in source file */
-	int refcount; /* number of (remaining) references */
+	char *name;            /* name of symbol */
+	unsigned int line;     /* line of definition in source file */
+	unsigned int refcount; /* number of (remaining) references */
 
 	struct sym *next; /* next symbol in linked list, if any */
 };
 
 /* adds a symbol to an existing symbol table (or new, if NULL given) */
-struct sym *sym_add(struct sym *table, char *name, int lineno);
+struct sym *sym_add(struct sym *table, char *name, unsigned int lineno);
 
 /* finds a symbol by name and returns a pointer to it or NULL, if not found */
 struct sym *sym_find(struct sym *table, const char *name);

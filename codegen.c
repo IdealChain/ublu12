@@ -63,11 +63,21 @@ void cg_function(struct func *f)
 
 void cg_stats(struct stat *ss)
 {
+	int in_deadcode = 0;
+	
 	while (ss) {
-		cg_stat(ss);
 		
-		/* TODO: everything behind a return is dead code,
-		 * if there is no label to jump to*/
+		//until the next used label ...
+		if (ss->type == statLABEL && ss->data.label->refcount)
+			in_deadcode = 0;
+		
+		if (!in_deadcode)
+			cg_stat(ss);
+		
+		//...everything is dead code after a return or goto
+		if (ss->type == statRETURN || ss->type == statGOTO)
+			in_deadcode = 1;
+		
 		
 		ss = ss->next;
 	}
@@ -126,6 +136,12 @@ void cg_stat_label(struct stat *s)
 	assert(s);
 	assert(s->data.label);
 	
+	if (!s->data.label->refcount) {
+		if (param_verbose)
+			printf("# LABEL %s: no references\n", s->data.label->name);
+		return;
+	}
+	
 	struct label *l = label_get(s->data.label);
 	
 	if (param_verbose)
@@ -139,7 +155,7 @@ void cg_stat_goto(struct stat *s)
 	assert(s);
 	assert(s->data.label);
 	
-	struct label *l = label_get(s->data.label);	
+	struct label *l = label_get(s->data.label);
 	printf("\tjmp\t.L%u\n", l->nr);
 }
 

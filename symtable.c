@@ -10,7 +10,7 @@
 
 int param_verbose;
 
-struct sym *sym_add(struct sym *table, char *name, int lineno)
+struct sym *sym_add(struct sym *table, char *name, unsigned int lineno)
 {
 	assert(name);
 
