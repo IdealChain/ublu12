@@ -20,9 +20,9 @@ enum operation {
 };
 
 enum regstatus {
-	regCALLEE = 1 << 0,  /* flag indicating whether this is a callee saved register */
-	regSAVED  = 1 << 1,  /* flag indicating whether this callee saved register has been saved to stack */
-	regBUSY   = 1 << 2   /* flag indiciating whether this register is currently in use */
+	regCALLEE  = 1 << 0,  /* flag indicating whether this is a callee saved register */
+	regTOUCHED = 1 << 1,  /* flag indicating whether this callee saved register has been touched (and must be saved & restored) */
+	regBUSY    = 1 << 2   /* flag indiciating whether this register is currently in use */
 };
 
 /* register state */
@@ -40,10 +40,6 @@ struct label {
 	
 	struct label *next;     /* next element in linked list */
 };
-
-/* convenience macros */
-#define REG(p)   (p)->reg->name
-#define REGB(p)  (p)->reg->name_b
 
 #define BURM(p) burm_label(p); \
                 burm_reduce(p, 1);

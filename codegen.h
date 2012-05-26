@@ -6,6 +6,7 @@
 #include "symtable.h"
 #include "exprtree.h"
 #include "stmttree.h"
+#include "output.h"
 
 /* allocates a free register */
 struct reg *reg_alloc();
@@ -26,11 +27,18 @@ void reg_free_nonvar(struct reg *except);
 /* gets whether a register is temporary assigned */
 int reg_istemp(struct reg *r);
 
+/* saves all callee saved registers that have been touched */
+/* (is called after the function code is generated, but inserts its code after the function header) */
+void reg_save_callee(struct instr *function_header);
+
 /* restore all callee saved registers */
 void reg_restore_callee();
 
 /* gets the function result register */
 const struct reg *const reg_result();
+
+/* gets an ascii bar indicating the amount of busy registers */
+char *reg_busy_graph();
 
 
 /* gets an asm label for a input label; will be generated if necessary */

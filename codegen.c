@@ -7,8 +7,6 @@
 
 #include "codegen.h"
 
-int param_verbose;
-
 /* a label that will be placed at the end of the current function
  * (for return statements, before restoring of callee registers) */
 static struct label *func_end;
@@ -23,29 +21,29 @@ void cg_program(struct func *fs)
 
 void cg_function(struct func *f)
 {
-	printf("\t.text\n");
-	printf(".globl %s\n", f->name);
-	printf("\t.type %s, @function\n", f->name);
-	printf("%s:\n", f->name);
+	out_instr("\t.text");
+	out_instr(".globl %s", f->name);
+	out_instr("\t.type %s, @function", f->name);
+	struct instr *header = out_instr("%s:", f->name);
 	
 	/* assign parameter registers */
 	reg_new_function(f->pars);
 	
-	if (param_verbose) {
+	{ /* debug output */
 		struct sym *p = f->pars;
 		
 		while (p) {
 			if (p->refcount) {
 				struct reg *r = reg_get_var(p);
-				printf("# PAR %s: REG %s (%d ref. in func.)\n", p->name, r->name, p->refcount);
+				out_verbose("PAR %s: REG %R (%d ref. in func.): %s", p->name, r, p->refcount, reg_busy_graph());
 			} else
-				printf("# PAR %s: no reference\n", p->name);
+				out_verbose("PAR %s: no reference", p->name);
 				
 			p = p->next;
 		}
 	}
 	
-	/* clear anonymous function ending register */
+	/* clear anonymous function ending label */
 	func_end = NULL;
 	
 	/* generate statements */
@@ -53,13 +51,21 @@ void cg_function(struct func *f)
 	
 	/* ensure that the return register gets a value */
 	/* TODO: is this necessary? */
-	printf("\tmovq\t$0, %s\n", reg_result()->name);
+	out_instr("\tmovq\t%I, %R", 0, reg_result());
 	
+	/* insert function ending label for return statements to jump to */
 	if (func_end)
-		printf(".L%u:\n", func_end->nr);
-		
+		out_instr("%L:", func_end);
+	
+	/* insert instructions to save callee registers after function header */
+	reg_save_callee(header);
+	/* ...and restore instructions before function return */
 	reg_restore_callee();
-	printf("\tret\n\n");
+	
+	out_instr("\tret\n");
+	
+	/* flush generated function code to stdout */
+	out_flush();
 }
 
 void cg_stats(struct stat *ss)
@@ -126,16 +132,16 @@ void cg_stat_return(struct stat *s)
 	if (s->expr->reg) {
 		
 		if (s->expr->reg != reg_result())
-			printf("\tmovq\t%s, %s\n", REG(s->expr), reg_result()->name);
+			out_instr("\tmovq\t%R, %R", s->expr->reg, reg_result());
 	}
 	else
-		printf("\tmovq\t$%ld, %s\n", s->expr->value, reg_result()->name);
+		out_instr("\tmovq\t%I, %R", s->expr->value, reg_result());
 	
 	/* fetch and place jump to end of current function */
 	if (!func_end)
 		func_end = label_anon();
 	
-	printf("\tjmp\t.L%u\n", func_end->nr);
+	out_instr("\tjmp\t%L", func_end);
 }
 
 void cg_stat_label(struct stat *s)
@@ -144,17 +150,14 @@ void cg_stat_label(struct stat *s)
 	assert(s->data.label);
 	
 	if (!s->data.label->refcount) {
-		if (param_verbose)
-			printf("# LABEL %s: no references\n", s->data.label->name);
+		out_verbose("LABEL %s: no references", s->data.label->name);
 		return;
 	}
 	
 	struct label *l = label_get(s->data.label);
 	
-	if (param_verbose)
-		printf("# LABEL %s: .L%u\n", l->symbol->name, l->nr);
-	
-	printf(".L%u:\n", l->nr);
+	out_verbose("LABEL %s: %L", l->symbol->name, l);
+	out_instr("%L:", l);
 }
 
 void cg_stat_goto(struct stat *s)
@@ -163,7 +166,7 @@ void cg_stat_goto(struct stat *s)
 	assert(s->data.label);
 	
 	struct label *l = label_get(s->data.label);
-	printf("\tjmp\t.L%u\n", l->nr);
+	out_instr("\tjmp\t%L", l);
 }
 
 void cg_stat_if(struct stat *s)
@@ -184,24 +187,24 @@ void cg_stat_if(struct stat *s)
 		struct reg *cond = (reg_istemp(expr->reg) ? expr->reg : reg_alloc());
 		
 		if (cond != expr->reg) 
-			printf("\tmovq\t%s, %s\n", expr->reg->name, cond->name);
+			out_instr("\tmovq\t%R, %R", expr->reg, cond);
 		
-		printf("\ttestb\t$1, %s\n", cond->name_b);
-		printf("\tje\t.L%u\n", l_end->nr);
+		out_instr("\ttestb\t%I, %B", 1, cond);
+		out_instr("\tje\t%L", l_end);
 		
 	} else {
 		
 		/* when compile-time condition is false: always jump to end */
 		/* (the body must be generated anyway, because a goto target could be in there) */
 		if (!(expr->value & 1))
-			printf("\tjmp\t.L%u\n", l_end->nr);
+			out_instr("\tjmp\t%L", l_end);
 	}
 	
 	/* if body */
 	cg_stats(s->data.body);
 	
 	/* end label */
-	printf(".L%u:\n", l_end->nr);
+	out_instr("%L:", l_end);
 }
 
 void cg_stat_vardef(struct stat *s)
@@ -221,11 +224,11 @@ void cg_stat_vardef(struct stat *s)
 		if (r == expr->reg) 
 			return;
 			
-		printf("\tmovq\t%s, %s\n", REG(expr), r->name);
+		out_instr("\tmovq\t%R, %R", expr->reg, r);
 		
 	} else {
 		
-		printf("\tmovq\t$%ld, %s\n", expr->value, r->name);
+		out_instr("\tmovq\t%I, %R", expr->value, r);
 	}
 }
 
@@ -244,13 +247,13 @@ void cg_stat_memass(struct stat *s)
 	if (!adr->reg) {
 		/* an adress as compile-time value... this shouldn't happen too often */
 		adr->reg = reg_alloc();
-		printf("\tmovq\t$%ld, %s\n", adr->value, REG(adr));
+		out_instr("\tmovq\t%I, %R", adr->value, adr->reg);
 	}
 	
 	if (expr->reg)
-		printf("\tmovq\t%s, (%s)\n", REG(expr), REG(adr));
+		out_instr("\tmovq\t%R, (%R)", expr->reg, adr->reg);
 	else
-		printf("\tmovq\t$%ld, (%s)\n", expr->value, REG(adr));
+		out_instr("\tmovq\t%I, (%R)", expr->value, adr->reg);
 }
 
 void cg_stat_eval(struct stat *s)
@@ -276,10 +279,10 @@ void cg_plus(struct node *b, struct node *l, struct node *r)
 	} else {
 	
 		b->reg = reg_alloc();
-		printf("\tmovq\t%s, %s\n", REG(l), REG(b));
+		out_instr("\tmovq\t%R, %R", l->reg, b->reg);
 	}
 	
-	printf("\taddq\t%s, %s\n", REG(src), REG(b));
+	out_instr("\taddq\t%R, %R", src->reg, b->reg);
 }
 
 void cg_plus_con(struct node *b, struct node *l, long con)
@@ -287,9 +290,9 @@ void cg_plus_con(struct node *b, struct node *l, long con)
 	b->reg = (reg_istemp(l->reg) ? l->reg : reg_alloc());
 	
 	if (b->reg != l->reg)
-		printf("\tmovq\t%s, %s\n", REG(l), REG(b));
+		out_instr("\tmovq\t%R, %R", l->reg, b->reg);
 	
-	printf("\taddq\t$%ld, %s\n", con, REG(b));
+	out_instr("\taddq\t%I, %R", con, b->reg);
 }
 
 void cg_mult(struct node *b, struct node *l, struct node *r)
@@ -308,10 +311,10 @@ void cg_mult(struct node *b, struct node *l, struct node *r)
 	} else {
 	
 		b->reg = reg_alloc();
-		printf("\tmovq\t%s, %s\n", REG(l), REG(b));
+		out_instr("\tmovq\t%R, %R", l->reg, b->reg);
 	}
 	
-	printf("\timulq\t%s, %s\n", REG(src), REG(b));
+	out_instr("\timulq\t%R, %R", src->reg, b->reg);
 }
 
 void cg_mult_con(struct node *b, struct node *l, long con)
@@ -319,9 +322,9 @@ void cg_mult_con(struct node *b, struct node *l, long con)
 	b->reg = (reg_istemp(l->reg) ? l->reg : reg_alloc());
 	
 	if (b->reg != l->reg)
-		printf("\tmovq\t%s, %s\n", REG(l), REG(b));
+		out_instr("\tmovq\t%R, %R", l->reg, b->reg);
 	
-	printf("\timulq\t$%ld, %s\n", con, REG(b));
+	out_instr("\timulq\t%I, %R", con, b->reg);
 }
 
 void cg_and(struct node *b, struct node *l, struct node *r)
@@ -340,10 +343,10 @@ void cg_and(struct node *b, struct node *l, struct node *r)
 	} else {
 	
 		b->reg = reg_alloc();
-		printf("\tmovq\t%s, %s\n", REG(l), REG(b));
+		out_instr("\tmovq\t%R, %R", l->reg, b->reg);
 	}
 	
-	printf("\tandq\t%s, %s\n", REG(src), REG(b));
+	out_instr("\tandq\t%R, %R", src->reg, b->reg);
 }
 
 void cg_and_con(struct node *b, struct node *l, long con)
@@ -351,9 +354,9 @@ void cg_and_con(struct node *b, struct node *l, long con)
 	b->reg = (reg_istemp(l->reg) ? l->reg : reg_alloc());
 	
 	if (l->reg != b->reg)
-		printf("\tmovq\t%s, %s\n", REG(l), REG(b));
+		out_instr("\tmovq\t%R, %R", l->reg, b->reg);
 		
-	printf("\tandq\t$%ld, %s\n", con, REG(b));
+	out_instr("\tandq\t%I, %R", con, b->reg);
 }
 
 void cg_not(struct node *b, struct node *l)
@@ -361,9 +364,9 @@ void cg_not(struct node *b, struct node *l)
 	b->reg = (reg_istemp(l->reg) ? l->reg : reg_alloc());
 	
 	if (l->reg != b->reg)
-		printf("\tmovq\t%s, %s\n", REG(l), REG(b));
+		out_instr("\tmovq\t%R, %R", l->reg, b->reg);
 		
-	printf("\tnotq\t%s\n", REG(b));
+	out_instr("\tnotq\t%R", b->reg);
 }
 
 void cg_neg(struct node *b, struct node *l)
@@ -371,9 +374,9 @@ void cg_neg(struct node *b, struct node *l)
 	b->reg = (reg_istemp(l->reg) ? l->reg : reg_alloc());
 	
 	if (l->reg != b->reg)
-		printf("\tmovq\t%s, %s\n", REG(l), REG(b));
+		out_instr("\tmovq\t%R, %R", l->reg, b->reg);
 		
-	printf("\tnegq\t%s\n", REG(b));
+	out_instr("\tnegq\t%R", b->reg);
 }
 
 void cg_set_cc(struct node *b, struct node *l, struct node *r, char *cc)
@@ -381,15 +384,15 @@ void cg_set_cc(struct node *b, struct node *l, struct node *r, char *cc)
 	b->reg = reg_alloc();
 	
 	/* clear register with xor */
-	printf("\txor\t%s, %s\n", REG(b), REG(b)); 
-	printf("\tcmp\t%s, %s\n", REG(r), REG(l));
-	printf("\tset%s\t%s\n", cc, REGB(b));
+	out_instr("\txor\t%R, %R", b->reg, b->reg); 
+	out_instr("\tcmp\t%R, %R", r->reg, l->reg);
+	out_instr("\tset%s\t%B", cc, b->reg);
 }
 
 void cg_const(struct node *b)
 {
 	b->reg = reg_alloc();
-	printf("\tmovq\t$%ld, %s\n", b->value, REG(b));
+	out_instr("\tmovq\t%I, %R", b->value, b->reg);
 }
 
 void cg_var(struct node *b)
@@ -397,8 +400,7 @@ void cg_var(struct node *b)
 	b->reg = reg_get_var(b->symbol);
 	b->symbol->refcount--; /* subtract this reference from the remaining ref. count */
 	
-	if (param_verbose)
-		printf("# VAR %s: REG %s (%d ref. left)\n", b->symbol->name, REG(b), b->symbol->refcount);
+	out_verbose("VAR %s: REG %R (%d ref. left): %s", b->symbol->name, b->reg, b->symbol->refcount, reg_busy_graph());
 	
 	/* when no more references follow: turn variable register to temporary register */
 	if (b->symbol->refcount < 1)
@@ -408,5 +410,5 @@ void cg_var(struct node *b)
 void cg_radr(struct node *b, struct node *l)
 {
 	b->reg = reg_alloc();
-	printf("\tmovq\t(%s), %s\n", REG(l), REG(b));
+	out_instr("\tmovq\t(%R), %R", l->reg, b->reg);
 }

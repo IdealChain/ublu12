@@ -35,12 +35,12 @@ static struct reg regs[] = {
 	for(i = 0, reg = &regs[0]; i < sizeof(regs) / sizeof(regs[0]); i++, reg = &regs[i])
 
 /* flag access macros */
-#define CALLEE(reg) (reg->status & regCALLEE)
-#define SAVED(reg)  (reg->status & regSAVED)
-#define BUSY(reg)   (reg->status & regBUSY)
+#define CALLEE(reg)  ((reg)->status & regCALLEE)
+#define TOUCHED(reg) ((reg)->status & regTOUCHED)
+#define BUSY(reg)    ((reg)->status & regBUSY)
 
-#define SET_STATE(reg, flag) (reg->status |= flag)
-#define CLR_STATE(reg, flag) (reg->status &= ~flag)
+#define SET_STATE(reg, flag) ((reg)->status |= flag)
+#define CLR_STATE(reg, flag) ((reg)->status &= ~flag)
 
 struct reg *reg_alloc()
 {
@@ -50,10 +50,8 @@ struct reg *reg_alloc()
 	
 		if (!BUSY(r)) {
 		
-			if (CALLEE(r) && !SAVED(r)) {
-				printf("\tpushq\t%s\n", r->name);
-				SET_STATE(r, regSAVED);
-			}
+			if (CALLEE(r) && !TOUCHED(r))
+				SET_STATE(r, regTOUCHED);
 			
 			SET_STATE(r, regBUSY);
 			return r;
@@ -144,16 +142,28 @@ int reg_istemp(struct reg *r)
 	return (BUSY(r) && !r->symbol);
 }
 
+void reg_save_callee(struct instr *function_header)
+{
+	struct instr *after = function_header;
+	struct reg *r;
+	
+	ITERATE_REGS(r) {
+		if (CALLEE(r) && TOUCHED(r))
+			after = out_instr_insert(after, "\tpushq\t%R", r);
+	}
+}
+
 void reg_restore_callee()
 {
 	int i;
 	struct reg *r;
+	/* iterate in reverse direction to pop saved values from stack */
 	for(i = sizeof(regs) / sizeof(regs[0]); i >= 0; --i) {
 		
 		r = &regs[i];
-		if (CALLEE(r) && SAVED(r)) {
-			printf("\tpopq\t%s\n", r->name);
-			CLR_STATE(r, regSAVED);
+		if (CALLEE(r) && TOUCHED(r)) {
+			out_instr("\tpopq\t%R", r);
+			CLR_STATE(r, regTOUCHED);
 		}
 	}
 }
@@ -161,4 +171,20 @@ void reg_restore_callee()
 const struct reg *const reg_result()
 {
 	return &regs[8];
+}
+
+char *reg_busy_graph()
+{
+	char *g = malloc(sizeof(regs) / sizeof(regs[0]) + 1);
+	MALLOC_CHECK(g)
+	
+	int i;
+	
+	for(i = 0; i < sizeof(regs) / sizeof(regs[0]); i++) {
+		g[i] = (BUSY(&regs[i]) ? 'X' : '_');
+	}
+	
+	g[14] = '\0';
+	
+	return g;
 }
