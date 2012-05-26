@@ -14,6 +14,7 @@
 %start expr
 %%
 expr:	reg               # 0
+expr:	con               # 0
 
 reg:	opPLUS(reg,reg)   # 1 # cg_plus(bnode, kids[0], kids[1]);
 reg:	opPLUS(reg,con)   # 1 # cg_plus_con(bnode, kids[0], kids[1]->value);

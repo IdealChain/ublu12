@@ -37,9 +37,9 @@ void cg_function(struct func *f)
 		while (p) {
 			if (p->refcount) {
 				struct reg *r = reg_get_var(p);
-				fprintf(stderr, "# PAR %s: REG %s (%d ref. in func.)\n", p->name, r->name, p->refcount);
+				printf("# PAR %s: REG %s (%d ref. in func.)\n", p->name, r->name, p->refcount);
 			} else
-				fprintf(stderr, "# PAR %s: no reference\n", p->name);
+				printf("# PAR %s: no reference\n", p->name);
 				
 			p = p->next;
 		}
@@ -52,6 +52,7 @@ void cg_function(struct func *f)
 	cg_stats(f->body);
 	
 	/* ensure that the return register gets a value */
+	/* TODO: is this necessary? */
 	printf("\tmovq\t$0, %s\n", reg_result()->name);
 	
 	if (func_end)
@@ -119,12 +120,18 @@ void cg_stat_return(struct stat *s)
 	assert(s);
 	assert(s->expr);
 	
-	struct node *expr = s->expr;
-	BURM(expr);
+	BURM(s->expr);
 
-	if (expr->reg && expr->reg != reg_result())
-		printf("\tmovq\t%s, %s\n", REG(expr), reg_result()->name);
+	/* move return value to result register */
+	if (s->expr->reg) {
+		
+		if (s->expr->reg != reg_result())
+			printf("\tmovq\t%s, %s\n", REG(s->expr), reg_result()->name);
+	}
+	else
+		printf("\tmovq\t$%ld, %s\n", s->expr->value, reg_result()->name);
 	
+	/* fetch and place jump to end of current function */
 	if (!func_end)
 		func_end = label_anon();
 	
@@ -165,23 +172,36 @@ void cg_stat_if(struct stat *s)
 	assert(s->expr);
 	assert(s->data.body);
 	
-	struct label *l_end = label_anon();
+	struct node *expr = s->expr;
+	struct label *l_end = NULL;
 	
 	/* evaluate condition */
-	BURM(s->expr);
+	BURM(expr);
 	
-	struct reg *cond = (reg_istemp(s->expr->reg) ? s->expr->reg : reg_alloc());
-	if (cond != s->expr->reg) 
-		printf("\tmovq\t%s, %s\n", s->expr->reg->name, cond->name);
-	
-	printf("\ttestb\t$1, %s\n", cond->name_b);
-	printf("\tje\t.L%u\n", l_end->nr);
+	if (expr->reg) {
+		
+		l_end = label_anon();
+		struct reg *cond = (reg_istemp(expr->reg) ? expr->reg : reg_alloc());
+		
+		if (cond != expr->reg) 
+			printf("\tmovq\t%s, %s\n", expr->reg->name, cond->name);
+		
+		printf("\ttestb\t$1, %s\n", cond->name_b);
+		printf("\tje\t.L%u\n", l_end->nr);
+		
+	} else {
+		
+		/* when compile-time condition is false: don't generate body */
+		if (!(expr->value & 1))
+			return;
+	}
 	
 	/* if body */
 	cg_stats(s->data.body);
 	
 	/* end label */
-	printf(".L%u:\n", l_end->nr);
+	if (l_end)
+		printf(".L%u:\n", l_end->nr);
 }
 
 void cg_stat_vardef(struct stat *s)
@@ -194,10 +214,19 @@ void cg_stat_vardef(struct stat *s)
 	BURM(expr);
 	
 	struct reg *r = reg_get_var(s->data.var);
-	if (r == expr->reg) 
-		return;
+	
+	/* move register or value to variable register */
+	if (expr->reg) {
 		
-	printf("\tmovq\t%s, %s\n", REG(expr), r->name);
+		if (r == expr->reg) 
+			return;
+			
+		printf("\tmovq\t%s, %s\n", REG(expr), r->name);
+		
+	} else {
+		
+		printf("\tmovq\t$%ld, %s\n", expr->value, r->name);
+	}
 }
 
 void cg_stat_memass(struct stat *s)
@@ -208,12 +237,20 @@ void cg_stat_memass(struct stat *s)
 	
 	struct node *expr = s->expr;
 	BURM(expr);
-	reg_free_nonvar(expr->reg); /* intermediate flushing :) */
 	
 	struct node *adr = s->data.adr;
 	BURM(adr);
 	
-	printf("\tmovq\t%s, (%s)\n", REG(expr), REG(adr));
+	if (!adr->reg) {
+		/* an adress as compile-time value... this shouldn't happen too often */
+		adr->reg = reg_alloc();
+		printf("\tmovq\t$%ld, %s\n", adr->value, REG(adr));
+	}
+	
+	if (expr->reg)
+		printf("\tmovq\t%s, (%s)\n", REG(expr), REG(adr));
+	else
+		printf("\tmovq\t$%ld, (%s)\n", expr->value, REG(adr));
 }
 
 void cg_stat_eval(struct stat *s)
