@@ -173,7 +173,7 @@ void cg_stat_if(struct stat *s)
 	assert(s->data.body);
 	
 	struct node *expr = s->expr;
-	struct label *l_end = NULL;
+	struct label *l_end = label_anon();
 	
 	/* evaluate condition */
 	BURM(expr);
@@ -191,17 +191,17 @@ void cg_stat_if(struct stat *s)
 		
 	} else {
 		
-		/* when compile-time condition is false: don't generate body */
+		/* when compile-time condition is false: always jump to end */
+		/* (the body must be generated anyway, because a goto target could be in there) */
 		if (!(expr->value & 1))
-			return;
+			printf("\tjmp\t.L%u\n", l_end->nr);
 	}
 	
 	/* if body */
 	cg_stats(s->data.body);
 	
 	/* end label */
-	if (l_end)
-		printf(".L%u:\n", l_end->nr);
+	printf(".L%u:\n", l_end->nr);
 }
 
 void cg_stat_vardef(struct stat *s)
