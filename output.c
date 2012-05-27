@@ -15,6 +15,8 @@ static struct instr *instructions;
 /* last element in instruction list */
 static struct instr *last_instr;
 
+/* type for converter callback */
+typedef int (*converter)(char *str, size_t size, va_list va);
 
 /* Converter for %I: immediate value */
 int conv_immediate(char *str, size_t size, va_list va) 
@@ -44,25 +46,20 @@ int conv_byte_register(char *str, size_t size, va_list va)
 	return snprintf(str, size, "%s", r->name_b);
 }
 
-static struct conversion convs[] = {
-	{ 'I', conv_immediate },
-	{ 'L', conv_label },
-	{ 'R', conv_register },
-	{ 'B', conv_byte_register }
-};
-
-struct conversion *find_conv(char specifier) 
+converter find_conv(char specifier) 
 {
-	int i;
-	struct conversion *c;
-	
-	for(i = 0, c = &convs[0]; i < sizeof(convs) / sizeof(*c); i++, c = &convs[i])
-	{
-		if (c->specifier == specifier) {
-			return c;
-		}
-	}
-	return NULL;
+	switch(specifier) {
+		case 'I': 
+			return conv_immediate;
+		case 'L':
+			return conv_label;
+		case 'R':
+			return conv_register;
+		case 'B':
+			return conv_byte_register;
+		default:
+			return NULL;
+	};
 }
 
 
@@ -105,7 +102,7 @@ struct instr *out(const char *format, va_list va)
 	
 	do {
 		char *q = p;
-		struct conversion *c = NULL;
+		converter c = NULL;
 		
 		/* find (first) conversion specifier we should handle */
 		while (*q) {
@@ -114,10 +111,12 @@ struct instr *out(const char *format, va_list va)
 				c = find_conv(*(q + 1));
 				
 				if (c) {
+					/* end printf string here */
 					*q++ = '\0';
 					*q++ = '\0';
 					break;
 				}
+				
 				q++;
 			}
 			q++;
@@ -130,7 +129,7 @@ struct instr *out(const char *format, va_list va)
 		if (c) {
 			/* consume and convert one argument */
 			maxlen = sizeof(i->output) - (dst - i->output);
-			dst += c->convert(dst, maxlen, va);
+			dst += c(dst, maxlen, va);
 		}
 		
 		p = q;
@@ -142,6 +141,7 @@ struct instr *out(const char *format, va_list va)
 
 struct instr *out_instr(const char *format, ...)
 {
+	assert(format);
 	va_list va;
 	
 	va_start(va, format);
@@ -154,15 +154,21 @@ struct instr *out_instr(const char *format, ...)
 struct instr *out_instr_insert(struct instr *after, const char *format, ...)
 {
 	assert(after);
+	assert(format);
 	va_list va;
+	
+	{ /* check that after is indeed in buffer */
+		struct instr *i = instructions;
+		while (i && i != after) 
+			i = i->next;
+		assert(i);
+	}
 	
 	va_start(va, format);
 	struct instr *r = out(format, va);
 	va_end(va);
 	
-	if (after->next)
-		r->next = after->next;
-	
+	r->next = after->next;
 	after->next = r;
 	
 	return r;
@@ -172,7 +178,8 @@ struct instr *out_verbose(const char *format, ...)
 {
 	if (!param_verbose)
 		return NULL;
-	
+
+	assert(format);
 	va_list va;
 	
 	char *f = malloc(strlen(format) + 3);

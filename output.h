@@ -14,13 +14,6 @@ struct instr {
 	struct instr *next;
 };
 
-/* printf-like specifier replacement
- * see static array in output.c for the list */
-struct conversion {
-	char specifier;
-	int (*convert)(char *str, size_t size, va_list va);
-};
-
 /* adds an instruction to the output buffer */
 struct instr *out_instr(const char *format, ...);
 

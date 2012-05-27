@@ -35,9 +35,9 @@ void cg_function(struct func *f)
 		while (p) {
 			if (p->refcount) {
 				struct reg *r = reg_get_var(p);
-				out_verbose("PAR %s: REG %R (%d ref. in func.): %s", p->name, r, p->refcount, reg_busy_graph());
+				out_verbose("%s PAR %s: REG %R (%d ref. in func.)", reg_busy_graph(), p->name, r, p->refcount);
 			} else
-				out_verbose("PAR %s: no reference", p->name);
+				out_verbose("%s PAR %s: no reference", reg_busy_graph(), p->name);
 				
 			p = p->next;
 		}
@@ -183,7 +183,6 @@ void cg_stat_if(struct stat *s)
 	
 	if (expr->reg) {
 		
-		l_end = label_anon();
 		struct reg *cond = (reg_istemp(expr->reg) ? expr->reg : reg_alloc());
 		
 		if (cond != expr->reg) 
@@ -400,7 +399,7 @@ void cg_var(struct node *b)
 	b->reg = reg_get_var(b->symbol);
 	b->symbol->refcount--; /* subtract this reference from the remaining ref. count */
 	
-	out_verbose("VAR %s: REG %R (%d ref. left): %s", b->symbol->name, b->reg, b->symbol->refcount, reg_busy_graph());
+	out_verbose("%s VAR %s: REG %R (%d ref. left)",  reg_busy_graph(), b->symbol->name, b->reg, b->symbol->refcount);
 	
 	/* when no more references follow: turn variable register to temporary register */
 	if (b->symbol->refcount < 1)
