@@ -402,8 +402,8 @@ void cg_var(struct node *b)
 	out_verbose("%s VAR %s: REG %R (%d ref. left)",  reg_busy_graph(), b->symbol->name, b->reg, b->symbol->refcount);
 	
 	/* when no more references follow: turn variable register to temporary register */
-	if (b->symbol->refcount < 1)
-		b->symbol = NULL;
+	if (!b->symbol->refcount)
+		b->reg->symbol = NULL;
 }
 
 void cg_radr(struct node *b, struct node *l)

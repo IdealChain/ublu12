@@ -117,6 +117,11 @@ void reg_free(struct reg *r)
 {
 	assert(r);
 
+	if (!BUSY(r))
+		return;
+
+	out_verbose("Freeing REG %R", r);
+
 	CLR_STATE(r, regBUSY);
 	r->symbol = NULL;
 }
