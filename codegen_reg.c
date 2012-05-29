@@ -126,7 +126,7 @@ void reg_free_var(const struct sym *var)
 		/* compare by name string (sym struct could have been duplicated) */
 		if (BUSY(r) && r->symbol && r->symbol->name == var->name) {
 			
-			out_verbose("Freeing VAR %s: REG %R", var->name, r);
+			out_verbose("Freeing VAR %s (REG %R)", var->name, r);
 			reg_free(r);
 			return;
 		}
@@ -151,7 +151,7 @@ void reg_free_nonvar()
 		
 		/* all busy registers that do not point to a variable symbol are temporary */
 		if (BUSY(r) && !r->symbol) {
-			out_verbose("Freeing TEMP: REG %R", r);
+			out_verbose("Freeing TEMP-REG %R", r);
 			reg_free(r);
 		}
 	}

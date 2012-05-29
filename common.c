@@ -5,6 +5,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <malloc.h>
+#include <limits.h>
 
 #include "common.h"
 
@@ -16,8 +17,9 @@ void usage(char *command)
 	printf("Usage: %s [OPTION] < FILE                    \n\n"
 	       "  -h, -?  show this usage notice               \n"
 	       "  -v      verbose mode                       \n\n"
+	       "Limits: MIN %ld, MAX %ld                       \n"
 	       "Daniel Achleitner (0926807), compiled: %s / %s \n",
-	       command, __DATE__, __TIME__);
+	       command, LONG_MIN, LONG_MAX, __DATE__, __TIME__);
 }
 
 int main(int argc, char **argv)

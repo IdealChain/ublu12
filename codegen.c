@@ -11,6 +11,9 @@
  * (for return statements, before restoring of callee registers) */
 static struct label *func_end;
 
+/* whether we are currently in dead code (...that cannot be reached except when a label turns up) */
+static int in_deadcode;
+
 void cg_program(struct func *fs)
 {
 	while (fs) {
@@ -21,6 +24,10 @@ void cg_program(struct func *fs)
 
 void cg_function(struct func *f)
 {
+	/* clear anonymous function ending label and deadcode flag */
+	func_end = NULL;
+	in_deadcode = 0;
+	
 	out_instr("\t.text");
 	out_instr(".globl %s", f->name);
 	out_instr("\t.type %s, @function", f->name);
@@ -43,15 +50,13 @@ void cg_function(struct func *f)
 		}
 	}
 	
-	/* clear anonymous function ending label */
-	func_end = NULL;
-	
 	/* generate statements */
 	cg_stats(f->body, f->scope_vars);
 	
 	/* ensure that the return register gets a value */
 	/* TODO: is this necessary? */
-	out_instr("\tmovq\t%I, %R", 0, reg_result());
+	if (!in_deadcode)
+		out_instr("\tmovq\t%I, %R", 0, reg_result());
 	
 	/* insert function ending label for return statements to jump to */
 	if (func_end)
@@ -70,25 +75,22 @@ void cg_function(struct func *f)
 
 void cg_stats(struct stat *ss, struct sym *scope_vars)
 {
-	int in_deadcode = 0;
-	
 	while (ss) {
 		
 		//until the next used label ...
 		if (ss->type == statLABEL && ss->data.label->refcount)
 			in_deadcode = 0;
-		
+
 		if (!in_deadcode)
 			cg_stat(ss);
-		
+
 		//...everything is dead code after a return or goto
 		if (ss->type == statRETURN || ss->type == statGOTO)
 			in_deadcode = 1;
-		
-		
+
 		ss = ss->next;
 	}
-	
+
 	/* free vars whose scope ends here */
 	struct sym *v = scope_vars;
 	while (v) {
@@ -184,7 +186,7 @@ void cg_stat_if(struct stat *s)
 	assert(s->data.body);
 	
 	struct node *expr = s->expr;
-	struct label *l_end = label_anon();
+	struct label *l_end = NULL;
 	
 	/* evaluate condition */
 	BURM(expr);
@@ -192,6 +194,7 @@ void cg_stat_if(struct stat *s)
 	if (expr->reg) {
 		
 		struct reg *cond = (reg_istemp(expr->reg) ? expr->reg : reg_alloc());
+		l_end = label_anon();
 		
 		if (cond != expr->reg) 
 			out_instr("\tmovq\t%R, %R", expr->reg, cond);
@@ -201,17 +204,25 @@ void cg_stat_if(struct stat *s)
 		
 	} else {
 		
-		/* when compile-time condition is false: always jump to end */
-		/* (the body must be generated anyway, because a goto target could be in there) */
-		if (!(expr->value & 1))
+		/* when compile-time condition...
+		 * ... is false: always jump to end
+		 * ... is true: don't jump anywhere
+		 * (the body must be generated anyway, because a goto target could be in there) */
+		if (!(expr->value & 1)) {
+			l_end = label_anon();
 			out_instr("\tjmp\t%L", l_end);
+			in_deadcode = 1;
+		}
 	}
 	
 	/* if body */
 	cg_stats(s->data.body, s->scope_vars);
 	
 	/* end label */
-	out_instr("%L:", l_end);
+	if (l_end) {
+		out_instr("%L:", l_end);
+		in_deadcode = 0;
+	}
 }
 
 void cg_stat_vardef(struct stat *s)
