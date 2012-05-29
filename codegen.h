@@ -17,12 +17,14 @@ void reg_new_function(struct sym *par);
 /* gets a register associated to a variable; a new one will be allocated if necessary */
 struct reg *reg_get_var(struct sym *var);
 
+/* frees a register associated to a variable */
+void reg_free_var(const struct sym *var);
+
 /* returns a register (marks it as free again) */
 void reg_free(struct reg *r);
 
-/* marks all non-variable (temporary) registers as free.
-   with one possible exception, if not NULL. */
-void reg_free_nonvar(struct reg *except);
+/* marks all non-variable (temporary) registers as free */
+void reg_free_nonvar();
 
 /* gets whether a register is temporary assigned */
 int reg_istemp(struct reg *r);
@@ -52,7 +54,7 @@ struct label *label_anon();
 void cg_program(struct func *fs);
 void cg_function(struct func *f);
 void cg_stat(struct stat *s);
-void cg_stats(struct stat *ss);
+void cg_stats(struct stat *ss, struct sym *scope_vars);
 
 void cg_stat_return(struct stat *s);
 void cg_stat_label(struct stat *s);

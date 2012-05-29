@@ -47,7 +47,7 @@ void cg_function(struct func *f)
 	func_end = NULL;
 	
 	/* generate statements */
-	cg_stats(f->body);
+	cg_stats(f->body, f->scope_vars);
 	
 	/* ensure that the return register gets a value */
 	/* TODO: is this necessary? */
@@ -68,7 +68,7 @@ void cg_function(struct func *f)
 	out_flush();
 }
 
-void cg_stats(struct stat *ss)
+void cg_stats(struct stat *ss, struct sym *scope_vars)
 {
 	int in_deadcode = 0;
 	
@@ -87,6 +87,13 @@ void cg_stats(struct stat *ss)
 		
 		
 		ss = ss->next;
+	}
+	
+	/* free vars whose scope ends here */
+	struct sym *v = scope_vars;
+	while (v) {
+		reg_free_var(v);
+		v = v->next;
 	}
 }
 
@@ -118,7 +125,8 @@ void cg_stat(struct stat *s)
 			assert(0);
 	}
 	
-	reg_free_nonvar(NULL);
+	/* free temporary registers */
+	reg_free_nonvar();
 }
 
 void cg_stat_return(struct stat *s)
@@ -200,7 +208,7 @@ void cg_stat_if(struct stat *s)
 	}
 	
 	/* if body */
-	cg_stats(s->data.body);
+	cg_stats(s->data.body, s->scope_vars);
 	
 	/* end label */
 	out_instr("%L:", l_end);
@@ -400,10 +408,6 @@ void cg_var(struct node *b)
 	b->symbol->refcount--; /* subtract this reference from the remaining ref. count */
 	
 	out_verbose("%s VAR %s: REG %R (%d ref. left)",  reg_busy_graph(), b->symbol->name, b->reg, b->symbol->refcount);
-	
-	/* when no more references follow: turn variable register to temporary register */
-	if (!b->symbol->refcount)
-		b->reg->symbol = NULL;
 }
 
 void cg_radr(struct node *b, struct node *l)

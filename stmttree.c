@@ -76,7 +76,7 @@ struct stat *stat_add_goto(struct stat *list, struct sym *label)
 	return stat_add(list, s);
 }
 
-struct stat *stat_add_if(struct stat *list, struct node *expr, struct stat *body)
+struct stat *stat_add_if(struct stat *list, struct node *expr, struct stat *body, struct sym *scope_vars)
 {
 	assert(expr);
 	
@@ -84,6 +84,7 @@ struct stat *stat_add_if(struct stat *list, struct node *expr, struct stat *body
 	s->type = statIF;
 	s->expr = expr;
 	s->data.body = body;
+	s->scope_vars = scope_vars;
 	
 	return stat_add(list, s);
 }
@@ -124,7 +125,7 @@ struct stat *stat_add_eval(struct stat *list, struct node *expr)
 	return stat_add(list, s);
 }
 
-struct func *func_add(struct func *list, char *name, struct sym *pars, struct stat *body)
+struct func *func_add(struct func *list, char *name, struct sym *pars, struct sym *scope_vars, struct stat *body)
 {
 	assert(name);
 	
@@ -133,8 +134,9 @@ struct func *func_add(struct func *list, char *name, struct sym *pars, struct st
 	memset(f, 0, sizeof(*f));
 	
 	f->name = name;
-	f->pars = pars; /* may be NULL */
-	f->body = body; /* may be NULL */
+	f->pars = pars;             /* may be NULL */
+	f->scope_vars = scope_vars; /* may be NULL */
+	f->body = body;             /* may be NULL */
 	
 	/* add new element at the end of the list */
 	struct func *l = list;

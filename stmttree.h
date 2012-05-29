@@ -18,6 +18,7 @@ enum stat_type {
 struct stat {
 	enum stat_type type;   /* type of the statement */
 	struct node *expr;     /* e.g. return value, if test, assignment value ... */
+	struct sym *scope_vars; /* local scope symbol table of if body */
 	
 	union data {
 		struct sym *label; /* goto label */
@@ -33,7 +34,7 @@ struct stat {
 struct stat *stat_add_return(struct stat *list, struct node *expr);
 struct stat *stat_add_label(struct stat *list, struct sym *label);
 struct stat *stat_add_goto(struct stat *list, struct sym *label);
-struct stat *stat_add_if(struct stat *list, struct node *expr, struct stat *body);
+struct stat *stat_add_if(struct stat *list, struct node *expr, struct stat *body, struct sym *scope_vars);
 struct stat *stat_add_vardef(struct stat *list, struct node *expr, struct sym *var);
 struct stat *stat_add_memass(struct stat *list, struct node *expr, struct node *adr);
 struct stat *stat_add_eval(struct stat *list, struct node *expr);
@@ -41,13 +42,14 @@ struct stat *stat_add_eval(struct stat *list, struct node *expr);
 /* function list, used for code generation */
 struct func {
 	char *name;
-	struct sym *pars;      /* parameter symbol table */
-	struct stat *body;     /* function statement tree */
+	struct sym *pars;       /* parameter symbol table */
+	struct sym *scope_vars; /* variable symbol table of function scope */
+	struct stat *body;      /* function statement tree */
 	
 	struct func *next; /* pointer to next function in list, or NULL */
 };
 
 /* method to add new function to list */
-struct func *func_add(struct func *list, char *name, struct sym *pars, struct stat *body);
+struct func *func_add(struct func *list, char *name, struct sym *pars, struct sym *scope_vars, struct stat *body);
 
 #endif

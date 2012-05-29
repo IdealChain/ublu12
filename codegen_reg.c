@@ -103,7 +103,9 @@ struct reg *reg_get_var(struct sym *var)
 	/* find register associated to variable */
 	struct reg *r;
 	ITERATE_REGS(r) {
-		if (BUSY(r) && r->symbol && r->symbol == var)
+		
+		/* compare by name string (sym struct could have been duplicated) */
+		if (BUSY(r) && r->symbol && r->symbol->name == var->name)
 			return r;
 	}
 	
@@ -113,6 +115,24 @@ struct reg *reg_get_var(struct sym *var)
 	return r;
 }
 
+void reg_free_var(const struct sym *var)
+{
+	assert(var);
+
+	/* find and free register associated to variable */
+	struct reg *r;
+	ITERATE_REGS(r) {
+		
+		/* compare by name string (sym struct could have been duplicated) */
+		if (BUSY(r) && r->symbol && r->symbol->name == var->name) {
+			
+			out_verbose("Freeing VAR %s: REG %R", var->name, r);
+			reg_free(r);
+			return;
+		}
+	}
+}
+
 void reg_free(struct reg *r)
 {
 	assert(r);
@@ -120,23 +140,20 @@ void reg_free(struct reg *r)
 	if (!BUSY(r))
 		return;
 
-	out_verbose("Freeing REG %R", r);
-
 	CLR_STATE(r, regBUSY);
 	r->symbol = NULL;
 }
 
-void reg_free_nonvar(struct reg *except) 
+void reg_free_nonvar() 
 {
 	struct reg *r;
 	ITERATE_REGS(r) {
 		
-		if (except && r == except)
-			continue;
-		
 		/* all busy registers that do not point to a variable symbol are temporary */
-		if (BUSY(r) && !r->symbol)
+		if (BUSY(r) && !r->symbol) {
+			out_verbose("Freeing TEMP: REG %R", r);
 			reg_free(r);
+		}
 	}
 }
 

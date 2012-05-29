@@ -13,6 +13,9 @@ struct sym {
 /* adds a symbol to an existing symbol table (or new, if NULL given) */
 struct sym *sym_add(struct sym *table, char *name, unsigned int lineno);
 
+/* concatenates two symbol tables */
+struct sym *sym_concat(struct sym *s, struct sym *tail);
+
 /* finds a symbol by name and returns a pointer to it or NULL, if not found */
 struct sym *sym_find(struct sym *table, const char *name);
 

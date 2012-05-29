@@ -34,6 +34,25 @@ struct sym *sym_add(struct sym *table, char *name, unsigned int lineno)
 	return s;
 }
 
+struct sym *sym_concat(struct sym *s, struct sym *tail)
+{
+	/* recursive function that concatenates two symtables,
+	 * while duplicating the first one (to leave the original intact) */
+	if (!s)
+		return tail;
+
+	tail = sym_concat(s->next, tail);
+
+	/* duplicate s */
+	struct sym *c = malloc(sizeof(*s));
+	MALLOC_CHECK(c)
+	memcpy(c, s, sizeof(*s));
+
+	/* and add it to front of current tail */
+	c->next = tail;
+	return c;
+}
+
 struct sym *sym_find(struct sym *table, const char *name)
 {
 	assert(name);

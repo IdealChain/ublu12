@@ -105,7 +105,7 @@ funcdef	:	IDENT '(' parlist ')' stats END		/* Funktionsdefinition */
 			
 			/* add function to list */
 			@i @stats.i_ss@ = NULL; 
-			@i @funcdef.s_fs@ = func_add(@funcdef.i_fs@, @IDENT.name@, @parlist.s_vars@, @stats.s_ss@);
+			@i @funcdef.s_fs@ = func_add(@funcdef.i_fs@, @IDENT.name@, @parlist.s_vars@, @stats.s_vars@, @stats.s_ss@);
 		@}
 	;	
 
@@ -188,17 +188,18 @@ stat	:	RETURN expr
 			
 			/*  parameters / variables */
 			@i @stat.s_vars@ = @stat.i_vars@;
-			@i @stats.i_vars@ = @stat.i_fvars@;
-			@i @stats.i_fvars@ = @stats.s_vars@;
+			@i @stats.i_vars@ = NULL;
+			/* all vars in scope = vars in this if body + vars in higher scopes */
+			@i @stats.i_fvars@ = sym_concat(@stats.s_vars@, @stat.i_fvars@);
 			@print { 
-				char subject[20];
+				char subject[24];
 				snprintf(subject, sizeof(subject), "if body [line %2d]", @IF.lineno@);
 				sym_print(@stats.s_vars@, "variables", subject);
 			}
 			
 			/* statements */
 			@i @stats.i_ss@ = NULL;
-			@i @stat.s_ss@ = stat_add_if(@stat.i_ss@, @expr.n@, @stats.s_ss@);
+			@i @stat.s_ss@ = stat_add_if(@stat.i_ss@, @expr.n@, @stats.s_ss@, @stats.s_vars@);
 		@}
 	|	VAR IDENT '=' expr			/* Variablendefinition */
 		@{ 
