@@ -136,6 +136,7 @@ void cg_stat_return(struct stat *s)
 	assert(s);
 	assert(s->expr);
 	
+	reg_hint_result();
 	BURM(s->expr);
 
 	/* move return value to result register */
@@ -183,7 +184,6 @@ void cg_stat_if(struct stat *s)
 {
 	assert(s);
 	assert(s->expr);
-	assert(s->data.body);
 	
 	struct node *expr = s->expr;
 	struct label *l_end = NULL;

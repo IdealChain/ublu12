@@ -39,6 +39,9 @@ void reg_restore_callee();
 /* gets the function result register */
 const struct reg *const reg_result();
 
+/* hints that the next associated register should be the result register, if it is available */
+void reg_hint_result();
+
 /* gets an ascii bar indicating the amount of busy registers */
 char *reg_busy_graph();
 

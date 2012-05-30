@@ -29,6 +29,9 @@ static struct reg regs[] = {
 	{"%r15", "%r15b", regCALLEE, NULL}
 };
 
+/* hints that the next associated register should be a specific register, if it is available */
+static struct reg *hint = NULL;
+
 /* loop to iterate over all registers */
 #define ITERATE_REGS(reg) \
 	int i; \
@@ -44,6 +47,21 @@ static struct reg regs[] = {
 
 struct reg *reg_alloc()
 {
+	/* try hint */
+	if (hint) {
+		struct reg *r = hint;
+		hint = NULL;
+		
+		if (!BUSY(r)) {
+			out_verbose("Assoc HINT-REG %R", r);
+			if (CALLEE(r) && !TOUCHED(r))
+				SET_STATE(r, regTOUCHED);
+			
+			SET_STATE(r, regBUSY);
+			return r;
+		}
+	}
+
 	/* return first free (non-busy) register */
 	struct reg *r;
 	ITERATE_REGS(r) {
@@ -90,6 +108,7 @@ void reg_new_function(struct sym *par)
 	ITERATE_REGS(r) {
 		reg_free(r);
 	}
+	hint = NULL;
 	
 	/* assign parameter registers in reverse order
 	   (first function parameters are last in symtable) */
@@ -193,6 +212,11 @@ void reg_restore_callee()
 const struct reg *const reg_result()
 {
 	return &regs[8];
+}
+
+void reg_hint_result()
+{
+	hint = &regs[8];
 }
 
 char *reg_busy_graph()
