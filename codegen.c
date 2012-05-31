@@ -185,6 +185,9 @@ void cg_stat_if(struct stat *s)
 	assert(s);
 	assert(s->expr);
 	
+	if (!s->data.body)
+		return;
+	
 	struct node *expr = s->expr;
 	struct label *l_end = NULL;
 	
@@ -193,13 +196,9 @@ void cg_stat_if(struct stat *s)
 	
 	if (expr->reg) {
 		
-		struct reg *cond = (reg_istemp(expr->reg) ? expr->reg : reg_alloc());
+		out_instr("\ttestb\t%I, %B", 1, expr->reg);
+		
 		l_end = label_anon();
-		
-		if (cond != expr->reg) 
-			out_instr("\tmovq\t%R, %R", expr->reg, cond);
-		
-		out_instr("\ttestb\t%I, %B", 1, cond);
 		out_instr("\tje\t%L", l_end);
 		
 	} else {
