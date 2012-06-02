@@ -17,8 +17,8 @@ void reg_new_function(struct sym *par);
 /* gets a register associated to a variable; a new one will be allocated if necessary */
 struct reg *reg_get_var(struct sym *var);
 
-/* frees a register associated to a variable */
-void reg_free_var(const struct sym *var);
+/* frees all registers associated to a list of variables */
+void reg_free_vars(const struct sym *vars);
 
 /* returns a register (marks it as free again) */
 void reg_free(struct reg *r);

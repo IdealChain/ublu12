@@ -131,24 +131,30 @@ struct reg *reg_get_var(struct sym *var)
 	/* no register is associated yet - allocate a new one */
 	r = reg_alloc();
 	r->symbol = var;
+	out_verbose("%s Assoc VAR %s: REG %R", reg_busy_graph(), var->name, r);
 	return r;
 }
 
-void reg_free_var(const struct sym *var)
+void reg_free_vars(const struct sym *vars)
 {
-	assert(var);
+	const struct sym *v = vars;
+	
+	while (v) {
 
-	/* find and free register associated to variable */
-	struct reg *r;
-	ITERATE_REGS(r) {
-		
-		/* compare by name string (sym struct could have been duplicated) */
-		if (BUSY(r) && r->symbol && r->symbol->name == var->name) {
+		/* find and free register associated to variable */
+		struct reg *r;
+		ITERATE_REGS(r) {
 			
-			out_verbose("Freeing VAR %s (REG %R)", var->name, r);
-			reg_free(r);
-			return;
+			/* compare by name string (sym struct could have been duplicated) */
+			if (BUSY(r) && r->symbol && r->symbol->name == v->name) {
+			
+				reg_free(r);
+				out_verbose("%s Freed VAR %s (REG %R)", reg_busy_graph(), v->name, r);
+				return;
+			}
 		}
+		
+		vars = vars->next;
 	}
 }
 
@@ -170,8 +176,8 @@ void reg_free_nonvar()
 		
 		/* all busy registers that do not point to a variable symbol are temporary */
 		if (BUSY(r) && !r->symbol) {
-			out_verbose("Freeing TEMP-REG %R", r);
 			reg_free(r);
+			/* out_verbose("%s Freed TEMP-REG %R", reg_busy_graph(), r); */
 		}
 	}
 }

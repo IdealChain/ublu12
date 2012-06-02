@@ -92,11 +92,7 @@ void cg_stats(struct stat *ss, struct sym *scope_vars)
 	}
 
 	/* free vars whose scope ends here */
-	struct sym *v = scope_vars;
-	while (v) {
-		reg_free_var(v);
-		v = v->next;
-	}
+	reg_free_vars(scope_vars);
 }
 
 void cg_stat(struct stat *s)
@@ -280,6 +276,7 @@ void cg_stat_if(struct stat *s)
 		
 			case statVARDEF:
 				cg_stat_if_cvardef_creturn(s->expr, s->data.body, 0);
+				reg_free_vars(s->scope_vars);
 				return;
 			case statRETURN:
 				/* return is a special type of variable assignment */
@@ -546,7 +543,7 @@ void cg_var(struct node *b)
 	b->reg = reg_get_var(b->symbol);
 	b->symbol->refcount--; /* subtract this reference from the remaining ref. count */
 	
-	out_verbose("%s VAR %s: REG %R (%d ref. left)",  reg_busy_graph(), b->symbol->name, b->reg, b->symbol->refcount);
+	/*out_verbose("Ref. VAR %s (REG %R, %d left)",  b->symbol->name, b->reg, b->symbol->refcount); */
 }
 
 void cg_radr(struct node *b, struct node *l)
