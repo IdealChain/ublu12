@@ -180,6 +180,90 @@ void cg_stat_goto(struct stat *s)
 	out_instr("\tjmp\t%L", l);
 }
 
+void cg_stat_if_cvardef_creturn(struct node *cond, struct stat *s, int is_return)
+{
+	assert(cond);
+	assert(s);
+	assert(s->data.var || is_return);
+	assert(!s->next);
+	
+	/* evaluate expression */
+	BURM(s->expr);
+	
+	/* evaluate condition */
+	BURM(cond);
+	
+	const struct reg *r = (is_return ? reg_result() : reg_get_var(s->data.var));
+	
+	if (cond->reg) {
+		
+		/* cmovCC instruction cannot handle immediate values */
+		if (!s->expr->reg) {
+			s->expr->reg = reg_alloc();
+			out_instr("\tmovq\t%I, %R", s->expr->value, s->expr->reg);
+		}
+		
+		/* when lowest bit is set: set variable register to value / jump to end of function */
+		out_instr("\ttestb\t%I, %B", 1, cond->reg);
+		out_instr("\tcmovne\t%R, %R", s->expr->reg, r);
+		
+		if (is_return) {
+			if (!func_end)
+				func_end = label_anon();
+				
+			out_instr("\tjne\t%L", func_end);
+		}
+		
+	} else {
+		
+		/* when compile-time condition...
+		 * ... is true: set register to value / jump to end of function */
+		if (cond->value & 1) {
+			
+			if (s->expr->reg)
+				out_instr("\tmovq\t%R, %R", s->expr->reg, r);
+			else
+				out_instr("\tmovq\t%I, %R", s->expr->value, r);
+				
+			if (is_return) {
+				if (!func_end)
+					func_end = label_anon();
+				
+				out_instr("\tjmp\t%L", func_end);
+				in_deadcode = 1;
+			}
+		}
+	}
+}
+
+void cg_stat_if_cgoto(struct node *cond, struct stat *s)
+{
+	assert(cond);
+	assert(s);
+	assert(s->data.label);
+	assert(!s->next);
+	
+	struct label *l = label_get(s->data.label);
+	/* evaluate condition */
+	BURM(cond);
+	
+	if (cond->reg) {
+		
+		/* when lowest bit is set: jump to label */
+		out_instr("\ttestb\t%I, %B", 1, cond->reg);
+		out_instr("\tjne\t%L", l);
+		
+	} else {
+		
+		/* when compile-time condition...
+		 * ... is true: jump to label */
+		if (cond->value & 1) {
+			out_instr("\tjmp\t%L", l);
+			in_deadcode = 1;
+		}
+	}
+}
+
 void cg_stat_if(struct stat *s)
 {
 	assert(s);
@@ -188,15 +272,37 @@ void cg_stat_if(struct stat *s)
 	if (!s->data.body)
 		return;
 	
-	struct node *expr = s->expr;
+	/* if there's only one statement in the body, it can be 
+	 * simplified to a cmov or cjmp. */
+	if (s->data.body && s->data.body->next == NULL) {
+		
+		switch(s->data.body->type) {
+		
+			case statVARDEF:
+				cg_stat_if_cvardef_creturn(s->expr, s->data.body, 0);
+				return;
+			case statRETURN:
+				/* return is a special type of variable assignment */
+				cg_stat_if_cvardef_creturn(s->expr, s->data.body, 1);
+				return;
+			case statGOTO:
+				cg_stat_if_cgoto(s->expr, s->data.body);
+				return;
+			default:
+				break;
+		}
+	}
+	
+	struct node *cond = s->expr;
 	struct label *l_end = NULL;
 	
 	/* evaluate condition */
-	BURM(expr);
+	BURM(cond);
 	
-	if (expr->reg) {
+	if (cond->reg) {
 		
-		out_instr("\ttestb\t%I, %B", 1, expr->reg);
+		/* when lowest bit is not set: jump to end of if body */
+		out_instr("\ttestb\t%I, %B", 1, cond->reg);
 		
 		l_end = label_anon();
 		out_instr("\tje\t%L", l_end);
@@ -207,7 +313,7 @@ void cg_stat_if(struct stat *s)
 		 * ... is false: always jump to end
 		 * ... is true: don't jump anywhere
 		 * (the body must be generated anyway, because a goto target could be in there) */
-		if (!(expr->value & 1)) {
+		if (!(cond->value & 1)) {
 			l_end = label_anon();
 			out_instr("\tjmp\t%L", l_end);
 			in_deadcode = 1;

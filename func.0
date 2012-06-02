@@ -1,5 +1,4 @@
 func(a)
-	(5 + 3);
 	if (a) then
 		return 1;
 	end;
