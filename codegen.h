@@ -72,6 +72,7 @@ void cg_plus(struct node *b, struct node *l, struct node *r);
 void cg_plus_con(struct node *b, struct node *l, long con);
 void cg_mult(struct node *b, struct node *l, struct node *r);
 void cg_mult_con(struct node *b, struct node *l, long con);
+void cg_lea(struct node *b, struct node *base, struct node *index, long scale, long disp);
 void cg_and(struct node *b, struct node *l, struct node *r);
 void cg_and_con(struct node *b, struct node *l, long con);
 void cg_not(struct node *b, struct node *l);

@@ -344,6 +344,34 @@ void cg_mult_con(struct node *b, struct node *l, long con)
 	out_instr("\timulq\t%I, %R", con, b->reg);
 }
 
+void cg_lea(struct node *b, struct node *base, struct node *index, long scale, long disp)
+{
+	assert(b);
+	assert(base);
+	assert(scale == 1 || scale == 2 || scale == 4 || scale == 8);
+	
+	if (reg_istemp(base->reg))
+		b->reg = base->reg;
+	else if (index && reg_istemp(index->reg))
+		b->reg = index->reg;
+	else
+		b->reg = reg_alloc();
+	
+	if (index) {
+		
+		if (disp)
+			out_instr("\tleaq\t%ld(%R,%R,%ld), %R", disp, base->reg, index->reg, scale, b->reg);
+		else
+			out_instr("\tleaq\t(%R,%R,%ld), %R", base->reg, index->reg, scale, b->reg);
+	} else {
+		
+		if (disp)
+			out_instr("\tleaq\t%ld(%R), %R", disp, base->reg, b->reg);
+		else if (base->reg != b->reg)
+			out_instr("\tleaq\t(%R), %R", base->reg, b->reg);
+	}
+}
+
 void cg_and(struct node *b, struct node *l, struct node *r)
 {
 	struct node *src = r;

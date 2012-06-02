@@ -8,6 +8,7 @@
 /* enum values below must be kept in sync with matcher.bfe */
 enum operation {
 	opCONST = 1,
+	opLEACONST,
 	opVAR,
 	opPLUS,
 	opMULT,
@@ -41,9 +42,6 @@ struct label {
 	struct label *next;     /* next element in linked list */
 };
 
-#define BURM(p) burm_label(p); \
-                burm_reduce(p, 1);
-
 /* iburg operation tree node */
 struct node {
 	enum operation op;
@@ -66,11 +64,20 @@ typedef struct node *NODEPTR_TYPE;
 #define STATE_LABEL(p)  ((p)->state)
 #define PANIC           printf
 
+/* convenience macros */
+#define BURM(p) burm_label(p); \
+                burm_reduce(p, 1);
+
+#define KIDS(p) (node_nav(bnode, p))
+
 /* forward declaration (extern) */
 struct burm_state *burm_label(struct node *bnode);
 void burm_reduce(struct node *bnode, int goalnt);
 
 /* generate tree node for iburg */
 struct node* gen_node(int op, struct node *left, struct node *right, long value, struct sym* symbol);
+
+/* helper function for navigating through expression tree (leaf-ward). b = start node, path = (l|r)+ */
+struct node* node_nav(struct node *b, char *path);
 
 #endif

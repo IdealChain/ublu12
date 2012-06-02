@@ -10,31 +10,52 @@
 
 /* symbols below must be kept in sync with tree.h */
 %}
-%term opCONST=1 opVAR=2 opPLUS=3 opMULT=4 opAND=5 opNOT=6 opNEG=7 opLTOREQ=8 opNEQ=9 opRADR=10
+%term opCONST=1 opLEACONST=2 opVAR=3 opPLUS=4 opMULT=5 opAND=6 opNOT=7 opNEG=8 opLTOREQ=9 opNEQ=10 opRADR=11
 %start expr
 %%
 expr:	reg               # 0
 expr:	con               # 0
 
-reg:	opPLUS(reg,reg)   # 1 # cg_plus(bnode, kids[0], kids[1]);
-reg:	opPLUS(reg,con)   # 1 # cg_plus_con(bnode, kids[0], kids[1]->value);
-reg:	opPLUS(con,reg)   # 1 # cg_plus_con(bnode, kids[1], kids[0]->value);
+reg:	opPLUS(reg,reg)   # 2 # cg_plus(bnode, kids[0], kids[1]);
+reg:	opPLUS(reg,con)   # 2 # cg_plus_con(bnode, kids[0], kids[1]->value);
+reg:	opPLUS(con,reg)   # 2 # cg_plus_con(bnode, kids[1], kids[0]->value);
 con:	opPLUS(con,con)   # 0 # bnode->value = kids[0]->value + kids[1]->value;
 
-reg:	opPLUS(opPLUS(reg,con),con) # 1 # cg_plus_con(bnode, bnode->kids[0]->kids[0], bnode->kids[0]->kids[1]->value + bnode->kids[1]->value);
-reg:	opPLUS(opPLUS(con,reg),con) # 1 # cg_plus_con(bnode, bnode->kids[0]->kids[1], bnode->kids[0]->kids[0]->value + bnode->kids[1]->value);
-reg:	opPLUS(con,opPLUS(reg,con)) # 1 # cg_plus_con(bnode, bnode->kids[1]->kids[0], bnode->kids[1]->kids[1]->value + bnode->kids[0]->value);
-reg:	opPLUS(con,opPLUS(con,reg)) # 1 # cg_plus_con(bnode, bnode->kids[1]->kids[1], bnode->kids[1]->kids[0]->value + bnode->kids[0]->value);
+reg:	opPLUS(opPLUS(reg,con),con) # 1 # cg_plus_con(bnode, KIDS("ll"), KIDS("lr")->value + KIDS("r")->value);
+reg:	opPLUS(opPLUS(con,reg),con) # 1 # cg_plus_con(bnode, KIDS("lr"), KIDS("ll")->value + KIDS("r")->value);
+reg:	opPLUS(con,opPLUS(reg,con)) # 1 # cg_plus_con(bnode, KIDS("rl"), KIDS("rr")->value + KIDS("l")->value);
+reg:	opPLUS(con,opPLUS(con,reg)) # 1 # cg_plus_con(bnode, KIDS("rr"), KIDS("rl")->value + KIDS("l")->value);
 
 reg:	opMULT(reg,reg)   # 1 # cg_mult(bnode, kids[0], kids[1]);
 reg:	opMULT(reg,con)   # 1 # cg_mult_con(bnode, kids[0], kids[1]->value);
 reg:	opMULT(con,reg)   # 1 # cg_mult_con(bnode, kids[1], kids[0]->value);
 con:	opMULT(con,con)   # 0 # bnode->value = kids[0]->value * kids[1]->value;
 
-reg:	opMULT(opMULT(reg,con),con) # 1 # cg_mult_con(bnode, bnode->kids[0]->kids[0], bnode->kids[0]->kids[1]->value * bnode->kids[1]->value);
-reg:	opMULT(opMULT(con,reg),con) # 1 # cg_mult_con(bnode, bnode->kids[0]->kids[1], bnode->kids[0]->kids[0]->value * bnode->kids[1]->value);
-reg:	opMULT(con,opMULT(reg,con)) # 1 # cg_mult_con(bnode, bnode->kids[1]->kids[0], bnode->kids[1]->kids[1]->value * bnode->kids[0]->value);
-reg:	opMULT(con,opMULT(con,reg)) # 1 # cg_mult_con(bnode, bnode->kids[1]->kids[1], bnode->kids[1]->kids[0]->value * bnode->kids[0]->value);
+reg:	opMULT(opMULT(reg,con),con) # 1 # cg_mult_con(bnode, KIDS("ll"), KIDS("lr")->value * KIDS("r")->value);
+reg:	opMULT(opMULT(con,reg),con) # 1 # cg_mult_con(bnode, KIDS("lr"), KIDS("ll")->value * KIDS("r")->value);
+reg:	opMULT(con,opMULT(reg,con)) # 1 # cg_mult_con(bnode, KIDS("rl"), KIDS("rr")->value * KIDS("l")->value);
+reg:	opMULT(con,opMULT(con,reg)) # 1 # cg_mult_con(bnode, KIDS("rr"), KIDS("rl")->value * KIDS("l")->value);
+
+reg:	opPLUS(reg,reg) # 1 # cg_lea(bnode, kids[0], kids[1], 1, 0);
+reg:	opPLUS(reg,con) # 1 # cg_lea(bnode, kids[0], NULL, 1, kids[1]->value);
+reg:	opPLUS(con,reg) # 1 # cg_lea(bnode, kids[1], NULL, 1, kids[0]->value);
+
+reg:	opPLUS(opPLUS(reg,reg),con) # 1 # cg_lea(bnode, KIDS("ll"), KIDS("lr"), 1, KIDS("r")->value);
+reg:	opPLUS(con,opPLUS(reg,reg)) # 1 # cg_lea(bnode, KIDS("rl"), KIDS("rr"), 1, KIDS("l")->value);
+
+reg:	opPLUS(reg,opMULT(lcon,reg)) # 1 # cg_lea(bnode, KIDS("l"), KIDS("rr"), KIDS("rl")->value, 0);
+reg:	opPLUS(reg,opMULT(reg,lcon)) # 1 # cg_lea(bnode, KIDS("l"), KIDS("rl"), KIDS("rr")->value, 0);
+reg:	opPLUS(opMULT(lcon,reg),reg) # 1 # cg_lea(bnode, KIDS("r"), KIDS("lr"), KIDS("ll")->value, 0);
+reg:	opPLUS(opMULT(reg,lcon),reg) # 1 # cg_lea(bnode, KIDS("r"), KIDS("ll"), KIDS("lr")->value, 0);
+
+reg:	opPLUS(opPLUS(reg,opMULT(lcon,reg)),con) # 1 # cg_lea(bnode, KIDS("ll"), KIDS("lrr"), KIDS("lrl")->value, KIDS("r")->value);
+reg:	opPLUS(opPLUS(reg,opMULT(reg,lcon)),con) # 1 # cg_lea(bnode, KIDS("ll"), KIDS("lrl"), KIDS("lrr")->value, KIDS("r")->value);
+reg:	opPLUS(opPLUS(opMULT(lcon,reg),reg),con) # 1 # cg_lea(bnode, KIDS("lr"), KIDS("llr"), KIDS("lll")->value, KIDS("r")->value);
+reg:	opPLUS(opPLUS(opMULT(reg,lcon),reg),con) # 1 # cg_lea(bnode, KIDS("lr"), KIDS("lll"), KIDS("llr")->value, KIDS("r")->value);
+reg:	opPLUS(con,opPLUS(reg,opMULT(lcon,reg))) # 1 # cg_lea(bnode, KIDS("rl"), KIDS("rrr"), KIDS("rrl")->value, KIDS("l")->value);
+reg:	opPLUS(con,opPLUS(reg,opMULT(reg,lcon))) # 1 # cg_lea(bnode, KIDS("rl"), KIDS("rrl"), KIDS("rrr")->value, KIDS("l")->value);
+reg:	opPLUS(con,opPLUS(opMULT(lcon,reg),reg)) # 1 # cg_lea(bnode, KIDS("rr"), KIDS("rlr"), KIDS("rll")->value, KIDS("l")->value);
+reg:	opPLUS(con,opPLUS(opMULT(reg,lcon),reg)) # 1 # cg_lea(bnode, KIDS("rr"), KIDS("rll"), KIDS("rlr")->value, KIDS("l")->value);
 
 reg:	opAND(reg,reg)    # 1 # cg_and(bnode, kids[0], kids[1]);
 reg:	opAND(reg,con)    # 1 # cg_and_con(bnode, kids[0], kids[1]->value);
@@ -61,4 +82,6 @@ reg:	con               # 1 # cg_const(bnode);
 reg:	opVAR             # 1 # cg_var(bnode);
 
 con:	opCONST           # 0
+lcon:	opLEACONST        # 0
+con:	lcon              # 0
 %%

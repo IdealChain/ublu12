@@ -7,21 +7,6 @@
 
 #include "stmttree.h"
 
-struct node* gen_node(int op, struct node *left, struct node *right, long value, struct sym* symbol)
-{
-	struct node *t = malloc(sizeof(*t));
-	MALLOC_CHECK(t)
-	
-	OP_LABEL(t) = op;
-	LEFT_CHILD(t) = left;
-	RIGHT_CHILD(t) = right;
-	
-	t->value = value;
-	t->symbol = symbol;
-	
-	return t;
-}
-
 struct stat *stat_alloc()
 {
 	struct stat *s = malloc(sizeof(*s));
