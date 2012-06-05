@@ -11,7 +11,8 @@
  * (for return statements, before restoring of callee registers) */
 static struct label *func_end;
 
-/* whether we are currently in dead code (...that cannot be reached except when a label turns up) */
+/* whether we are currently in dead code (...that cannot be reached 
+ * except when a referenced label comes along) */
 static int in_deadcode;
 
 void cg_program(struct func *fs)
@@ -53,8 +54,9 @@ void cg_function(struct func *f)
 	/* generate statements */
 	cg_stats(f->body, f->scope_vars);
 	
-	/* ensure that the return register gets a value */
-	/* TODO: is this necessary? */
+	/* ensure that the return register gets a value
+	 * (is not really necessary but helps avoiding random results) 
+	 */
 	if (!in_deadcode)
 		out_instr("\tmovq\t%I, %R", 0, reg_result());
 	
@@ -64,6 +66,7 @@ void cg_function(struct func *f)
 	
 	/* insert instructions to save callee registers after function header */
 	reg_save_callee(header);
+	
 	/* ...and restore instructions before function return */
 	reg_restore_callee();
 	
@@ -176,6 +179,12 @@ void cg_stat_goto(struct stat *s)
 	out_instr("\tjmp\t%L", l);
 }
 
+/* Generates a special if instruction in the case that the if body only
+ * contains one statement, which is either a variable assignment
+ * (definition) or a return statement (when is_return is set). 
+ * This can be done using conditional move and jump instructions
+ * cmovCC and jCC.
+ */
 void cg_stat_if_cvardef_creturn(struct node *cond, struct stat *s, int is_return)
 {
 	assert(cond);
@@ -199,7 +208,8 @@ void cg_stat_if_cvardef_creturn(struct node *cond, struct stat *s, int is_return
 			out_instr("\tmovq\t%I, %R", s->expr->value, s->expr->reg);
 		}
 		
-		/* when lowest bit is set: set variable register to value / jump to end of function */
+		/* when lowest bit is set: 
+		 * set variable register to value / jump to end of function */
 		out_instr("\ttestb\t%I, %B", 1, cond->reg);
 		out_instr("\tcmovne\t%R, %R", s->expr->reg, r);
 		
@@ -232,6 +242,10 @@ void cg_stat_if_cvardef_creturn(struct node *cond, struct stat *s, int is_return
 	}
 }
 
+/* Generates a special if instruction in the case that the if body only
+ * contains one statement, which is a goto statement. This can be done
+ * using conditional jCC jumps.
+ */
 void cg_stat_if_cgoto(struct node *cond, struct stat *s)
 {
 	assert(cond);
@@ -276,6 +290,7 @@ void cg_stat_if(struct stat *s)
 		
 			case statVARDEF:
 				cg_stat_if_cvardef_creturn(s->expr, s->data.body, 0);
+				/* if this was a var definition, it's scope could have ended immediately */
 				reg_free_vars(s->scope_vars);
 				return;
 			case statRETURN:
@@ -309,7 +324,9 @@ void cg_stat_if(struct stat *s)
 		/* when compile-time condition...
 		 * ... is false: always jump to end
 		 * ... is true: don't jump anywhere
-		 * (the body must be generated anyway, because a goto target could be in there) */
+		 * (the body must be generated anyway, 
+		 * because a goto target could be in there)
+		 */
 		if (!(cond->value & 1)) {
 			l_end = label_anon();
 			out_instr("\tjmp\t%L", l_end);
@@ -365,7 +382,8 @@ void cg_stat_memass(struct stat *s)
 	BURM(adr);
 	
 	if (!adr->reg) {
-		/* an adress as compile-time value... this shouldn't happen too often */
+		/* an adress as compile-time value... 
+		 * this shouldn't happen too often */
 		adr->reg = reg_alloc();
 		out_instr("\tmovq\t%I, %R", adr->value, adr->reg);
 	}

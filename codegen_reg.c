@@ -29,13 +29,16 @@ static struct reg regs[] = {
 	{"%r15", "%r15b", regCALLEE, NULL}
 };
 
-/* hints that the next associated register should be a specific register, if it is available */
+/* hints that the next associated register should be a 
+ * specific register, if it is available */
 static struct reg *hint = NULL;
 
 /* loop to iterate over all registers */
 #define ITERATE_REGS(reg) \
 	int i; \
-	for(i = 0, reg = &regs[0]; i < sizeof(regs) / sizeof(regs[0]); i++, reg = &regs[i])
+	for(i = 0, reg = &regs[0]; \
+		i < sizeof(regs) / sizeof(regs[0]); \
+		i++, reg = &regs[i])
 
 /* flag access macros */
 #define CALLEE(reg)  ((reg)->status & regCALLEE)
@@ -123,7 +126,9 @@ struct reg *reg_get_var(struct sym *var)
 	struct reg *r;
 	ITERATE_REGS(r) {
 		
-		/* compare by name string (sym struct could have been duplicated) */
+		/* compare by name string
+		 * (sym struct could have been duplicated by sym_concat) 
+		 */
 		if (BUSY(r) && r->symbol && r->symbol->name == var->name)
 			return r;
 	}
@@ -145,7 +150,9 @@ void reg_free_vars(const struct sym *vars)
 		struct reg *r;
 		ITERATE_REGS(r) {
 			
-			/* compare by name string (sym struct could have been duplicated) */
+			/* compare by name string
+			 * (sym struct could have been duplicated by sym_concat)
+			 */
 			if (BUSY(r) && r->symbol && r->symbol->name == v->name) {
 			
 				reg_free(r);
@@ -153,8 +160,8 @@ void reg_free_vars(const struct sym *vars)
 				return;
 			}
 		}
-		
-		vars = vars->next;
+
+		v = v->next;
 	}
 }
 
@@ -174,10 +181,10 @@ void reg_free_nonvar()
 	struct reg *r;
 	ITERATE_REGS(r) {
 		
-		/* all busy registers that do not point to a variable symbol are temporary */
+		/* all busy registers, that do not point to a 
+		 * variable symbol, are temporary */
 		if (BUSY(r) && !r->symbol) {
 			reg_free(r);
-			/* out_verbose("%s Freed TEMP-REG %R", reg_busy_graph(), r); */
 		}
 	}
 }
@@ -204,6 +211,7 @@ void reg_restore_callee()
 {
 	int i;
 	struct reg *r;
+	
 	/* iterate in reverse direction to pop saved values from stack */
 	for(i = sizeof(regs) / sizeof(regs[0]); i >= 0; --i) {
 		

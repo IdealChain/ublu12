@@ -165,9 +165,11 @@ void cg_const(struct node *b)
 void cg_var(struct node *b)
 {
 	b->reg = reg_get_var(b->symbol);
-	b->symbol->refcount--; /* subtract this reference from the remaining ref. count */
+	/* subtract this reference from the remaining ref. count */
+	b->symbol->refcount--;
 	
-	/*out_verbose("Ref. VAR %s (REG %R, %d left)",  b->symbol->name, b->reg, b->symbol->refcount); */
+	/*out_verbose("Ref. VAR %s (REG %R, %d left)",
+		b->symbol->name, b->reg, b->symbol->refcount); */
 }
 
 void cg_radr(struct node *b, struct node *l)

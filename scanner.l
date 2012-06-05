@@ -20,7 +20,7 @@ DEC	&[0-9]+
 
 %%
 
-"(*"([^\*]|\*[^\)])*"*)"	; /* eat comments */
+"(*"(.*|[ \n\t])*"*)"	; /* eat comments */
 
 "end"		return END;
 "return"	return RETURN;

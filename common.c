@@ -46,7 +46,8 @@ int main(int argc, char **argv)
 	yyparse();
 	
 	if (param_verbose)
-		fprintf(stderr, "allocated memory: %dkB\n", mallinfo().uordblks / 1024);
+		fprintf(stderr, "allocated memory: %dkB\n", 
+			mallinfo().uordblks / 1024);
 
 	return EXIT_SUCCESS;
 }

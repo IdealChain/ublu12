@@ -13,7 +13,7 @@ static struct label *labels;
 /* last label in list */
 static struct label *last_label;
 
-/* counter to make outputted label names unique */
+/* counter to make outputted label numbers unique */
 static unsigned int l_counter = 1;
 
 struct label *label_get(struct sym *lab)
@@ -29,7 +29,7 @@ struct label *label_get(struct sym *lab)
 		l = l->next;
 	}
 	
-	/* create new one */
+	/* if there isn't one: fetch new one */
 	l = label_anon();
 	l->symbol = lab;
 	

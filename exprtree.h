@@ -21,25 +21,25 @@ enum operation {
 };
 
 enum regstatus {
-	regCALLEE  = 1 << 0,  /* flag indicating whether this is a callee saved register */
-	regTOUCHED = 1 << 1,  /* flag indicating whether this callee saved register has been touched (and must be saved & restored) */
-	regBUSY    = 1 << 2   /* flag indiciating whether this register is currently in use */
+	regCALLEE  = 1 << 0, /* flag: this is a callee saved register */
+	regTOUCHED = 1 << 1, /* flag: this callee saved register has been touched (and must be saved & restored) */
+	regBUSY    = 1 << 2  /* flag: this register is currently in use */
 };
 
 /* register state */
 struct reg {
-	char *name;             /* register name, e.g. %rax */
-	char *name_b;           /* byte variant of register name, e.g. %al */
-	enum regstatus status;  /* current register status, see above */
-	struct sym *symbol;     /* associated variable symbol or NULL, if register is not used or temporary */
+	char *name;            /* register name, e.g. %rax */
+	char *name_b;          /* byte variant of register name, e.g. %al */
+	enum regstatus status; /* current register status, see above */
+	struct sym *symbol;    /* associated variable symbol or NULL, if register is not used or temporary */
 };
 
 /* list of generated assembler labels */
 struct label {
-	unsigned int nr;        /* label number in outputted asm code (unique) */
-	struct sym *symbol;     /* input code label, or NULL, if its generated implicitely */
+	unsigned int nr;    /* label number in outputted asm code (unique) */
+	struct sym *symbol; /* input code label, or NULL, if its generated implicitely */
 	
-	struct label *next;     /* next element in linked list */
+	struct label *next; /* next element in linked list */
 };
 
 /* iburg operation tree node */
@@ -77,7 +77,9 @@ void burm_reduce(struct node *bnode, int goalnt);
 /* generate tree node for iburg */
 struct node* gen_node(int op, struct node *left, struct node *right, long value, struct sym* symbol);
 
-/* helper function for navigating through expression tree (leaf-ward). b = start node, path = (l|r)+ */
+/* helper function for navigating through expression tree (leaf-ward).
+ * b = start node, path = (l|r)+ 
+ */
 struct node* node_nav(struct node *b, char *path);
 
 #endif
