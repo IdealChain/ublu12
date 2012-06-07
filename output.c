@@ -174,6 +174,28 @@ struct instr *out_instr_insert(struct instr *after, const char *format, ...)
 	return r;
 }
 
+struct instr *out_jmp(struct label *to)
+{
+	assert(to);
+	
+	struct instr *i = out_instr("\tjmp\t%L", to);
+	i->type = instrJMP;
+	i->lbl = to;
+	
+	return i;
+}
+
+struct instr *out_lbl(struct label *l)
+{
+	assert(l);
+
+	struct instr *i = out_instr("%L:", l);
+	i->type = instrLBL;
+	i->lbl = l;
+	
+	return i;
+}
+
 struct instr *out_verbose(const char *format, ...)
 {
 	if (!param_verbose)
@@ -195,7 +217,28 @@ struct instr *out_verbose(const char *format, ...)
 	
 	free(f);
 	
+	r->type = instrVERBOSE;
+	
 	return queue_instr(r);
+}
+
+/* filters out redundand jmp instructions, where the 
+ * called-for label follows immediately afterward 
+ * (kind of a peephole optimization) */
+int out_jmp_filter(struct instr *i)
+{
+	if (i->type == instrJMP) {
+
+		struct instr *n = i->next;
+		
+		while (n && n->type == instrVERBOSE)
+			n = n->next;
+		
+		if (n && n->type == instrLBL && n->lbl == i->lbl)
+			return 1;
+	}
+	
+	return 0;
 }
 
 void out_flush()
@@ -206,7 +249,16 @@ void out_flush()
 	struct instr *i = instructions;
 	
 	while (i) {
-		puts(i->output);
+		
+		int f = out_jmp_filter(i);
+		
+		if (f) {
+			if (param_verbose) 
+				fprintf(stderr, "# F: %s\n", i->output);
+		}
+		else
+			puts(i->output);
+		
 		i = i->next;
 	}
 	

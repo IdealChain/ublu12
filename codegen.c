@@ -62,7 +62,7 @@ void cg_function(struct func *f)
 	
 	/* insert function ending label for return statements to jump to */
 	if (func_end)
-		out_instr("%L:", func_end);
+		out_lbl(func_end);
 	
 	/* insert instructions to save callee registers after function header */
 	reg_save_callee(header);
@@ -151,7 +151,7 @@ void cg_stat_return(struct stat *s)
 	if (!func_end)
 		func_end = label_anon();
 	
-	out_instr("\tjmp\t%L", func_end);
+	out_jmp(func_end);
 }
 
 void cg_stat_label(struct stat *s)
@@ -165,9 +165,8 @@ void cg_stat_label(struct stat *s)
 	}
 	
 	struct label *l = label_get(s->data.label);
-	
 	out_verbose("LABEL %s: %L", l->symbol->name, l);
-	out_instr("%L:", l);
+	out_lbl(l);
 }
 
 void cg_stat_goto(struct stat *s)
@@ -176,7 +175,7 @@ void cg_stat_goto(struct stat *s)
 	assert(s->data.label);
 	
 	struct label *l = label_get(s->data.label);
-	out_instr("\tjmp\t%L", l);
+	out_jmp(l);
 }
 
 /* Generates a special if instruction in the case that the if body only
@@ -235,7 +234,7 @@ void cg_stat_if_cvardef_creturn(struct node *cond, struct stat *s, int is_return
 				if (!func_end)
 					func_end = label_anon();
 				
-				out_instr("\tjmp\t%L", func_end);
+				out_jmp(func_end);
 				in_deadcode = 1;
 			}
 		}
@@ -268,7 +267,7 @@ void cg_stat_if_cgoto(struct node *cond, struct stat *s)
 		/* when compile-time condition...
 		 * ... is true: jump to label */
 		if (cond->value & 1) {
-			out_instr("\tjmp\t%L", l);
+			out_jmp(l);
 			in_deadcode = 1;
 		}
 	}
@@ -329,7 +328,7 @@ void cg_stat_if(struct stat *s)
 		 */
 		if (!(cond->value & 1)) {
 			l_end = label_anon();
-			out_instr("\tjmp\t%L", l_end);
+			out_jmp(l_end);
 			in_deadcode = 1;
 		}
 	}
@@ -339,7 +338,7 @@ void cg_stat_if(struct stat *s)
 	
 	/* end label */
 	if (l_end) {
-		out_instr("%L:", l_end);
+		out_lbl(l_end);
 		in_deadcode = 0;
 	}
 }
