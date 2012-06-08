@@ -10,7 +10,7 @@
 
 /* symbols below must be kept in sync with tree.h */
 %}
-%term opCONST=1 opLEACONST=2 opVAR=3 opPLUS=4 opMULT=5 opAND=6 opNOT=7 opNEG=8 opLTOREQ=9 opNEQ=10 opRADR=11
+%term opCONST=1 opLEACONST=2 opVAR=3 opPLUS=4 opMULT=5 opAND=6 opNOT=7 opNEG=8 opLTOREQ=9 opNEQ=10 opRADR=11 opCALL=12
 %start expr
 %%
 expr:	reg             # 0
@@ -77,6 +77,7 @@ reg:	opRADR(reg)       # 1 # cg_radr(bnode, kids[0]);
 
 reg:	con               # 1 # cg_const(bnode);
 reg:	opVAR             # 1 # cg_var(bnode);
+reg:	opCALL            # 1 # cg_function_call(bnode);
 
 con:	opCONST           # 0
 con:	opLEACONST        # 0

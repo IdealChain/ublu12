@@ -83,4 +83,6 @@ void cg_const(struct node *b);
 void cg_var(struct node *b);
 void cg_radr(struct node *b, struct node *l);
 
+void cg_function_call(struct node *b);
+
 #endif

@@ -1,6 +1,4 @@
 func(a)
-	if (a) then
-		return 1;
-	end;
-	return 0;
+	var b = called(a);
+	return b;
 end;

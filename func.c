@@ -12,3 +12,8 @@ int main(int argc, char **argv)
 	
 	return 0;
 }
+
+long called(long arg)
+{
+	return 2 * arg;
+}

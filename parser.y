@@ -46,19 +46,25 @@ void check_collisions(struct sym *vars, struct sym *labels);
    'n' is a pointer to the tree node for iburg.
    
    'i_flabs' and 'i_fvars' are the auto-inherited, complete symbol tables containing all
-   labels and variables visible in the respective scope. */
+   labels and variables visible in the respective scope. 
+   
+   'i_rexpr' transports the right part of an assignment to the left part.
+   
+   'i_pars' and 's_pars' are the inherited and synthesized incomplete lists that are used
+   to collect all parameters of a function call.
+ */
 @autoinh i_flabs i_fvars
 @autosyn n
-@attributes { struct func *i_fs;  struct func *s_fs;                                           } program funcdef
-@attributes { struct sym *i_labs; struct sym *s_labs; struct sym *i_flabs; 
-              struct sym *i_vars; struct sym *s_vars; struct sym *i_fvars;                 
-              struct stat *i_ss;  struct stat *s_ss;                                           } stats stat
-@attributes { struct sym *i_labs; struct sym *s_labs;
-              struct stat *i_ss;  struct stat *s_ss;  struct sym *i_flabs;                     } labels
-@attributes { struct sym *i_vars; struct sym *s_vars;                                          } parlist
-@attributes { struct stat *i_ss;  struct stat *s_ss;  struct sym *i_fvars; struct node *rexpr; } lexpr
-@attributes {                                         struct sym *i_fvars;                     } exprlist
-@attributes {                                         struct sym *i_fvars; struct node *n;     } expr plusterm multterm andterm unary term
+@attributes { struct func *i_fs;    struct func *s_fs;                                               } program funcdef
+@attributes { struct sym *i_labs;   struct sym *s_labs;   struct sym *i_flabs;
+              struct sym *i_vars;   struct sym *s_vars;   struct sym *i_fvars;
+              struct stat *i_ss;    struct stat *s_ss;                                               } stats stat
+@attributes { struct sym *i_labs;   struct sym *s_labs;
+              struct stat *i_ss;    struct stat *s_ss;    struct sym *i_flabs;                       } labels
+@attributes { struct sym *i_vars;   struct sym *s_vars;                                              } parlist
+@attributes { struct stat *i_ss;    struct stat *s_ss;    struct sym *i_fvars; struct node *i_rexpr; } lexpr
+@attributes { struct param *i_pars; struct param *s_pars; struct sym *i_fvars;                       } exprlist
+@attributes {                                             struct sym *i_fvars; struct node *n;       } expr plusterm multterm andterm unary term
 
 
 
@@ -215,7 +221,7 @@ stat	:	RETURN expr
 			@i @lexpr.i_ss@ = @stat.i_ss@;
 			@i @stat.s_ss@ = @lexpr.s_ss@;
 			
-			@i @lexpr.rexpr@ = @expr.n@;
+			@i @lexpr.i_rexpr@ = @expr.n@;
 		@}
 	|	term
 		@{ 
@@ -231,11 +237,11 @@ stat	:	RETURN expr
 lexpr	:	IDENT					/* schreibender Variablenzugriff */
 		@{
 			@check check_defined(@lexpr.i_fvars@, @IDENT.name@, @IDENT.lineno@, 0);
-			@i @lexpr.s_ss@ = stat_add_vardef(@lexpr.i_ss@, @lexpr.rexpr@, sym_find(@lexpr.i_fvars@, @IDENT.name@));
+			@i @lexpr.s_ss@ = stat_add_vardef(@lexpr.i_ss@, @lexpr.i_rexpr@, sym_find(@lexpr.i_fvars@, @IDENT.name@));
 		@}
 	|	'*' unary				/* schreibender Speicherzugriff */
 		@{ 
-			@i @lexpr.s_ss@ = stat_add_memass(@lexpr.i_ss@, @lexpr.rexpr@, @unary.n@); 
+			@i @lexpr.s_ss@ = stat_add_memass(@lexpr.i_ss@, @lexpr.i_rexpr@, @unary.n@); 
 		@}
 	;
 
@@ -285,12 +291,21 @@ term	:	'(' expr ')'
 			@i @term.n@ = gen_node(opVAR, NULL, NULL, 0, sym_find(@term.i_fvars@, @IDENT.name@));
 		@}
 	|	IDENT '(' exprlist ')'			/* Funktionsaufruf */
-		@{ @i @term.n@ = gen_node(opCONST, NULL, NULL, 0, NULL); @}
+		@{
+			@i @exprlist.i_pars@ = NULL;
+			@i @term.n@ = gen_call_node(@IDENT.name@, @IDENT.lineno@, @exprlist.s_pars@);
+		@}
 	;
 
 exprlist:	/* empty */
+		@{ @i @exprlist.s_pars@ = @exprlist.i_pars@; @}
 	|	expr
+		@{ @i @exprlist.s_pars@ = add_param(@exprlist.i_pars@, @expr.n@); @}
 	|	expr ',' exprlist
+		@{
+			@i @exprlist.1.i_pars@ = add_param(@exprlist.0.i_pars@, @expr.n@);
+			@i @exprlist.0.s_pars@ = @exprlist.1.s_pars@;
+		@}
 	;
 
 %%

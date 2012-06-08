@@ -17,7 +17,8 @@ enum operation {
 	opNEG,
 	opLTOREQ,
 	opNEQ,
-	opRADR
+	opRADR,
+	opCALL
 };
 
 enum regstatus {
@@ -42,6 +43,15 @@ struct label {
 	struct label *next; /* next element in linked list */
 };
 
+/* forward declaration */
+struct node;
+
+/* parameter expressions for a function call */
+struct param {
+	struct node *expr;  /* expression for this parameter */
+	struct param *next; /* next element in linked list */
+};
+
 /* iburg operation tree node */
 struct node {
 	enum operation op;
@@ -49,10 +59,11 @@ struct node {
 	struct burm_state *state;
 
 	/* attributes of node: */
-	struct reg *reg;    /* result register */
+	struct reg *reg;      /* result register */
 	
-	long value;         /* CONST nodes */
-	struct sym *symbol; /* VAR nodes */
+	long value;           /* CONST nodes */
+	struct sym *symbol;   /* VAR nodes */
+	struct param *params; /* function call parameters */
 };
 
 /* type and access macros for iburg */
@@ -75,7 +86,13 @@ struct burm_state *burm_label(struct node *bnode);
 void burm_reduce(struct node *bnode, int goalnt);
 
 /* generate tree node for iburg */
-struct node* gen_node(int op, struct node *left, struct node *right, long value, struct sym* symbol);
+struct node *gen_node(int op, struct node *left, struct node *right, long value, struct sym* symbol);
+
+/* generate function call node */
+struct node *gen_call_node(char *function, unsigned int lineno, struct param *params);
+
+/* add a parameter to the list */
+struct param *add_param(struct param *list, struct node *expr);
 
 /* helper function for navigating through expression tree (leaf-ward).
  * b = start node, path = (l|r)+ 

@@ -177,3 +177,19 @@ void cg_radr(struct node *b, struct node *l)
 	b->reg = reg_alloc();
 	out_instr("\tmovq\t(%R), %R", l->reg, b->reg);
 }
+
+void cg_function_call(struct node *b)
+{
+	assert(b);
+	assert(b->symbol);
+	
+	int p_count = 0;
+	struct param *p = b->params;
+	
+	while (p) {
+		p_count++;
+		p = p->next;
+	}
+	
+	out_verbose("CALL: '%s' (%d arg)", b->symbol->name, p_count);
+}
