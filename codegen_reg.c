@@ -4,11 +4,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <stdarg.h>
 
 #include "codegen.h"
 
 static struct reg regs[] = {
-	/* 64-bit-name, 8-bit-name, busy-flag, pointer to variable symbol */
+	/* 64-bit-name, 8-bit-name, current status, pointer to variable symbol */
 	
 	/* caller saved */
 	{"%rdi", "%dil",  0,         NULL},
@@ -33,17 +34,22 @@ static struct reg regs[] = {
  * specific register, if it is available */
 static struct reg *hint = NULL;
 
+/* number of registers */
+#define REGNO (sizeof(regs) / sizeof(regs[0]))
+
 /* loop to iterate over all registers */
 #define ITERATE_REGS(reg) \
 	int i; \
-	for(i = 0, reg = &regs[0]; \
-		i < sizeof(regs) / sizeof(regs[0]); \
-		i++, reg = &regs[i])
+	for(i = 0, reg = &regs[0]; i < REGNO; i++, reg = &regs[i])
 
 /* flag access macros */
 #define CALLEE(reg)  ((reg)->status & regCALLEE)
 #define TOUCHED(reg) ((reg)->status & regTOUCHED)
 #define BUSY(reg)    ((reg)->status & regBUSY)
+
+/* quasi-flag: all busy registers, that do not point
+ * to a variable symbol, are temporary */
+#define TEMP(reg)    (BUSY(reg) && !reg->symbol)
 
 #define SET_STATE(reg, flag) ((reg)->status |= flag)
 #define CLR_STATE(reg, flag) ((reg)->status &= ~flag)
@@ -51,18 +57,12 @@ static struct reg *hint = NULL;
 struct reg *reg_alloc()
 {
 	/* try hint */
-	if (hint) {
-		struct reg *r = hint;
-		hint = NULL;
+	if (hint && !BUSY(hint)) {
+	
+		out_verbose("Alloc HINT-REG %R", hint);
 		
-		if (!BUSY(r)) {
-			out_verbose("Assoc HINT-REG %R", r);
-			if (CALLEE(r) && !TOUCHED(r))
-				SET_STATE(r, regTOUCHED);
-			
-			SET_STATE(r, regBUSY);
-			return r;
-		}
+		reg_busy(hint);
+		return hint;
 	}
 
 	/* return first free (non-busy) register */
@@ -71,16 +71,53 @@ struct reg *reg_alloc()
 	
 		if (!BUSY(r)) {
 		
-			if (CALLEE(r) && !TOUCHED(r))
-				SET_STATE(r, regTOUCHED);
-			
-			SET_STATE(r, regBUSY);
+			reg_busy(r);
 			return r;
 		}
 	}
 	
 	fputs("compiler error: ran out of registers\n", stderr);
 	ERROR_INT;
+}
+
+struct reg *reg_alloc_temp(int candidates, ...)
+{
+	/* try to re-use already-allocated temporary registers (=candidates) */
+	va_list ap;
+	va_start(ap, candidates);
+	int i;
+	
+	struct reg *use_hint = NULL;
+	struct reg *use_temp = NULL;
+	
+	for (i = 0; i < candidates;  i++) {
+		struct reg *r = va_arg(ap, struct reg*);
+		
+		if (!r) continue;
+		
+		/* prefer hint regs */
+		if (hint && TEMP(hint) && r == hint)
+			use_hint = r;
+		
+		/* and then the first temporary candidate */
+		if (!use_temp && TEMP(r))
+			use_temp = r;
+	}
+	
+	va_end(ap);
+	
+	if (use_hint) {
+		out_verbose("Reuse HINT-REG %R", use_hint);
+		return use_hint;
+	}
+	
+	if (use_temp) {
+		out_verbose("Reuse TEMP-REG %R", use_temp);
+		return use_temp;
+	}
+	
+	/* no re-use candidate - allocate new reg */
+	return reg_alloc();
 }
 
 int reg_alloc_param(struct sym *par, int i) 
@@ -97,7 +134,7 @@ int reg_alloc_param(struct sym *par, int i)
 	if (par->refcount > 0) {
 		struct reg *r = &regs[(count - 1) - i];
 		
-		SET_STATE(r, regBUSY);
+		reg_busy(r);
 		r->symbol = par;
 	}
 	
@@ -110,6 +147,7 @@ void reg_new_function(struct sym *par)
 	struct reg *r;
 	ITERATE_REGS(r) {
 		reg_free(r);
+		CLR_STATE(r, regTOUCHED);
 	}
 	hint = NULL;
 	
@@ -176,24 +214,26 @@ void reg_free(struct reg *r)
 	r->symbol = NULL;
 }
 
+void reg_busy(struct reg *r)
+{
+	assert(r);
+
+	if (BUSY(r))
+		return;
+
+	SET_STATE(r, regBUSY);
+	SET_STATE(r, regTOUCHED);
+}
+
 void reg_free_nonvar() 
 {
 	struct reg *r;
 	ITERATE_REGS(r) {
-		
-		/* all busy registers, that do not point to a 
-		 * variable symbol, are temporary */
-		if (BUSY(r) && !r->symbol) {
-			reg_free(r);
-		}
-	}
-}
-
-int reg_istemp(struct reg *r)
-{
-	assert(r);
 	
-	return (BUSY(r) && !r->symbol);
+		/* free all temp registers */
+		if (TEMP(r))
+			reg_free(r);
+	}
 }
 
 void reg_save_callee(struct instr *function_header)
@@ -213,7 +253,7 @@ void reg_restore_callee()
 	struct reg *r;
 	
 	/* iterate in reverse direction to pop saved values from stack */
-	for(i = sizeof(regs) / sizeof(regs[0]); i >= 0; --i) {
+	for(i = REGNO; i >= 0; --i) {
 		
 		r = &regs[i];
 		if (CALLEE(r) && TOUCHED(r)) {
@@ -228,6 +268,16 @@ struct reg *reg_result()
 	return &regs[8];
 }
 
+struct reg *reg_argument(unsigned int n)
+{
+	if (n > 5) {
+		fputs("compiler error: cannot handle more than 6 function call args", stderr);
+		ERROR_INT;
+	}
+
+	return &regs[n];
+}
+
 void reg_hint(struct reg *r)
 {
 	assert(r);
@@ -240,16 +290,16 @@ void reg_hint(struct reg *r)
 
 char *reg_busy_graph()
 {
-	char *g = malloc(sizeof(regs) / sizeof(regs[0]) + 1);
+	char *g = malloc(REGNO + 1);
 	MALLOC_CHECK(g)
 	
 	int i;
 	
-	for(i = 0; i < sizeof(regs) / sizeof(regs[0]); i++) {
+	for(i = 0; i < REGNO; i++) {
 		g[i] = (BUSY(&regs[i]) ? 'X' : '_');
 	}
 	
-	g[14] = '\0';
+	g[REGNO] = '\0';
 	
 	return g;
 }

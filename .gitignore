@@ -1,3 +1,4 @@
+# Generated executables
 scanner
 parser
 ag
@@ -5,10 +6,15 @@ codea
 codeb
 gesamt
 func
+
+# Generated object and code files
+*.dep
 *.o
 *.output
 oxout*
 y.tab.*
 lex.yy.*
-*.dep
 matcher.c
+
+# Modified version of g0-testscript
+test

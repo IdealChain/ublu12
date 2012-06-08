@@ -8,8 +8,13 @@
 #include "stmttree.h"
 #include "output.h"
 
+
 /* allocates a free register */
 struct reg *reg_alloc();
+
+/* allocates a free, temporary registers. supplied candidates are 
+ * allocated registers that may be re-used. */
+struct reg *reg_alloc_temp(int candidates, ...);
 
 /* resets the current register state and assigns registers to function parameters */
 void reg_new_function(struct sym *par);
@@ -23,11 +28,11 @@ void reg_free_vars(const struct sym *vars);
 /* returns a register (marks it as free again) */
 void reg_free(struct reg *r);
 
+/* marks a register as busy (non-free) */
+void reg_busy(struct reg *r);
+
 /* marks all non-variable (temporary) registers as free */
 void reg_free_nonvar();
-
-/* gets whether a register is temporary assigned */
-int reg_istemp(struct reg *r);
 
 /* saves all callee saved registers that have been touched */
 /* (is called after the function code is generated, but inserts its code after the function header) */
@@ -39,17 +44,20 @@ void reg_restore_callee();
 /* gets the function result register */
 struct reg *reg_result();
 
+/* gets the register that is used for function call argument number n */
+struct reg *reg_argument(unsigned int n);
+
 /* hints that the next associated register should be a specific register, if it is available */
 void reg_hint(struct reg *r);
 
-/* gets an ascii bar indicating the amount of busy registers */
+/* gets an ascii bar indicating the amount of currently busy registers */
 char *reg_busy_graph();
 
 
 /* gets an asm label for a input label; will be generated if necessary */
 struct label *label_get(struct sym *lab);
 
-/* gets an implicitely created label, e.g. for an if statement */
+/* gets an implicitely created (anonymous) label, e.g. for an if statement */
 struct label *label_anon();
 
 

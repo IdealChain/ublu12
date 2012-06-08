@@ -11,27 +11,19 @@ void cg_plus(struct node *b, struct node *l, struct node *r)
 {
 	struct node *src = r;
 	
-	if (reg_istemp(l->reg)) {
+	b->reg = reg_alloc_temp(2, l->reg, r->reg);
 	
-		b->reg = l->reg;
-		
-	} else if (reg_istemp(r->reg)) {
-	
-		b->reg = r->reg;
+	if (b->reg == r->reg)
 		src = l;
-		
-	} else {
-	
-		b->reg = reg_alloc();
+	else if (b->reg != l->reg)
 		out_instr("\tmovq\t%R, %R", l->reg, b->reg);
-	}
 	
 	out_instr("\taddq\t%R, %R", src->reg, b->reg);
 }
 
 void cg_plus_con(struct node *b, struct node *l, long con)
 {
-	b->reg = (reg_istemp(l->reg) ? l->reg : reg_alloc());
+	b->reg = reg_alloc_temp(1, l->reg);
 	
 	if (b->reg != l->reg)
 		out_instr("\tmovq\t%R, %R", l->reg, b->reg);
@@ -43,27 +35,19 @@ void cg_mult(struct node *b, struct node *l, struct node *r)
 {
 	struct node *src = r;
 	
-	if (reg_istemp(l->reg)) {
+	b->reg = reg_alloc_temp(2, l->reg, r->reg);
 	
-		b->reg = l->reg;
-		
-	} else if (reg_istemp(r->reg)) {
-	
-		b->reg = r->reg;
+	if (b->reg == r->reg)
 		src = l;
-		
-	} else {
-	
-		b->reg = reg_alloc();
+	else if (b->reg != l->reg)
 		out_instr("\tmovq\t%R, %R", l->reg, b->reg);
-	}
 	
 	out_instr("\timulq\t%R, %R", src->reg, b->reg);
 }
 
 void cg_mult_con(struct node *b, struct node *l, long con)
 {
-	b->reg = (reg_istemp(l->reg) ? l->reg : reg_alloc());
+	b->reg = reg_alloc_temp(1, l->reg);
 	
 	if (b->reg != l->reg)
 		out_instr("\tmovq\t%R, %R", l->reg, b->reg);
@@ -76,12 +60,7 @@ void cg_lea(struct node *b, struct node *base, struct node *index, long scale, l
 	assert(b);
 	assert(scale == 1 || scale == 2 || scale == 4 || scale == 8);
 	
-	if (base && reg_istemp(base->reg))
-		b->reg = base->reg;
-	else if (index && reg_istemp(index->reg))
-		b->reg = index->reg;
-	else
-		b->reg = reg_alloc();
+	b->reg = reg_alloc_temp(2, base ? base->reg : NULL, index ? index->reg : NULL);
 	
 	if (base && index)
 		out_instr("\tleaq\t%ld(%R,%R,%ld), %R", disp, base->reg, index->reg, scale, b->reg);
@@ -98,27 +77,19 @@ void cg_and(struct node *b, struct node *l, struct node *r)
 {
 	struct node *src = r;
 	
-	if (reg_istemp(l->reg)) {
+	b->reg = reg_alloc_temp(2, l->reg, r->reg);
 	
-		b->reg = l->reg;
-		
-	} else if (reg_istemp(r->reg)) {
-	
-		b->reg = r->reg;
+	if (b->reg == r->reg)
 		src = l;
-		
-	} else {
-	
-		b->reg = reg_alloc();
+	else if (b->reg != l->reg)
 		out_instr("\tmovq\t%R, %R", l->reg, b->reg);
-	}
 	
 	out_instr("\tandq\t%R, %R", src->reg, b->reg);
 }
 
 void cg_and_con(struct node *b, struct node *l, long con)
 {
-	b->reg = (reg_istemp(l->reg) ? l->reg : reg_alloc());
+	b->reg = reg_alloc_temp(1, l->reg);
 	
 	if (l->reg != b->reg)
 		out_instr("\tmovq\t%R, %R", l->reg, b->reg);
@@ -128,7 +99,7 @@ void cg_and_con(struct node *b, struct node *l, long con)
 
 void cg_not(struct node *b, struct node *l)
 {
-	b->reg = (reg_istemp(l->reg) ? l->reg : reg_alloc());
+	b->reg = reg_alloc_temp(1, l->reg);
 	
 	if (l->reg != b->reg)
 		out_instr("\tmovq\t%R, %R", l->reg, b->reg);
@@ -138,7 +109,7 @@ void cg_not(struct node *b, struct node *l)
 
 void cg_neg(struct node *b, struct node *l)
 {
-	b->reg = (reg_istemp(l->reg) ? l->reg : reg_alloc());
+	b->reg = reg_alloc_temp(1, l->reg);
 	
 	if (l->reg != b->reg)
 		out_instr("\tmovq\t%R, %R", l->reg, b->reg);
@@ -148,12 +119,11 @@ void cg_neg(struct node *b, struct node *l)
 
 void cg_set_cc(struct node *b, struct node *l, struct node *r, char *cc)
 {
-	b->reg = reg_alloc();
+	b->reg = reg_alloc(); /* re-use of temp registers is not easily possible here (target reg clear invalidates flags) */
 	
-	/* clear register with xor */
-	out_instr("\txor\t%R, %R", b->reg, b->reg); 
+	out_instr("\txor\t%R, %R", b->reg, b->reg); /* clear full register with xor */
 	out_instr("\tcmp\t%R, %R", r->reg, l->reg);
-	out_instr("\tset%s\t%B", cc, b->reg);
+	out_instr("\tset%s\t%B", cc, b->reg); /* set byte-register to flag */
 }
 
 void cg_const(struct node *b)
@@ -174,7 +144,7 @@ void cg_var(struct node *b)
 
 void cg_radr(struct node *b, struct node *l)
 {
-	b->reg = reg_alloc();
+	b->reg = reg_alloc_temp(1, l->reg);
 	out_instr("\tmovq\t(%R), %R", l->reg, b->reg);
 }
 
