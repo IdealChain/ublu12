@@ -31,6 +31,7 @@ DEPS    = $(ALLSRCS:%.c=%.dep)
 $(TARGET): $(ALLOBJS)
 	$(CC) -o $@ $^
 
+.NOTPARALLEL: oxout.y oxout.l
 oxout.y oxout.l: parser.y scanner.l
 	ox $^
 
