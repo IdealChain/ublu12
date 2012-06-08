@@ -55,9 +55,9 @@ void cg_mult_con(struct node *b, struct node *l, long con)
 	b->reg = reg_alloc_temp(1, l->reg);
 	
 	if (b->reg != l->reg)
-		out_instr("\tmovq\t%R, %R", l->reg, b->reg);
-	
-	out_instr("\timulq\t%I, %R", con, b->reg);
+		out_instr("\timulq\t%I, %R, %R", con, l->reg, b->reg);
+	else
+		out_instr("\timulq\t%I, %R", con, b->reg);
 }
 
 void cg_lea(struct node *b, struct node *base, struct node *index, long scale, long disp)
