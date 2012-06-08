@@ -19,8 +19,9 @@ struct reg *reg_alloc_temp(int candidates, ...);
 /* resets the current register state and assigns registers to function parameters */
 void reg_new_function(struct sym *par);
 
-/* gets a register associated to a variable; a new one will be allocated if necessary */
-struct reg *reg_get_var(struct sym *var);
+/* gets a register associated to a variable; a new one will be allocated if
+ * necessary. candidate can be a re-usable temporary register, or NULL. */
+struct reg *reg_get_var(struct sym *var, struct reg *candidate);
 
 /* frees all registers associated to a list of variables */
 void reg_free_vars(const struct sym *vars);
@@ -31,6 +32,9 @@ void reg_free(struct reg *r);
 /* marks a register as busy (non-free) */
 void reg_busy(struct reg *r);
 
+/* ensures that a register is available, moving its content */
+void reg_relocate(struct reg *r);
+
 /* marks all non-variable (temporary) registers as free */
 void reg_free_nonvar();
 
@@ -40,6 +44,12 @@ void reg_save_callee(struct instr *function_header);
 
 /* restore all callee saved registers */
 void reg_restore_callee();
+
+/* saves all caller saved registers that are currently in use (before a function call) */
+const struct reg *reg_save_fcall();
+
+/* restores all previously saved caller saved registers (after a function call) */
+void reg_restore_fcall(const struct reg *dump);
 
 /* gets the function result register */
 struct reg *reg_result();

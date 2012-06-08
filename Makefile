@@ -10,7 +10,7 @@ else
 	CPPFLAGS = -DNDEBUG
 endif
 
-TARGET = codeb
+TARGET = gesamt
 
 CFLAGS  += $(DEBUG) -Wall 
 LDFLAGS += $(DEBUG)

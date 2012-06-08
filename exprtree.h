@@ -23,8 +23,9 @@ enum operation {
 
 enum regstatus {
 	regCALLEE  = 1 << 0, /* flag: this is a callee saved register */
-	regTOUCHED = 1 << 1, /* flag: this register has been touched (and must be saved & restored) */
-	regBUSY    = 1 << 2  /* flag: this register is currently in use */
+	regCALLER  = 1 << 1, /* flag: this is a caller saved register */
+	regTOUCHED = 1 << 2, /* flag: this register has been touched (and must be saved & restored) */
+	regBUSY    = 1 << 3  /* flag: this register is currently in use */
 };
 
 /* register state */

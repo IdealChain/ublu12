@@ -1,6 +1,7 @@
 #include <stdio.h>
 
 long func(long);
+long called(long arg1, long arg2, long arg3);
 
 int main(int argc, char **argv) 
 {
@@ -13,7 +14,7 @@ int main(int argc, char **argv)
 	return 0;
 }
 
-long called(long arg)
+long called(long arg1, long arg2, long arg3)
 {
-	return 2 * arg;
+	return 2 * arg1;
 }

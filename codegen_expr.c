@@ -47,6 +47,11 @@ void cg_mult(struct node *b, struct node *l, struct node *r)
 
 void cg_mult_con(struct node *b, struct node *l, long con)
 {
+	if (con == 1) {
+		b->reg = l->reg;
+		return;
+	}
+
 	b->reg = reg_alloc_temp(1, l->reg);
 	
 	if (b->reg != l->reg)
@@ -59,6 +64,11 @@ void cg_lea(struct node *b, struct node *base, struct node *index, long scale, l
 {
 	assert(b);
 	assert(scale == 1 || scale == 2 || scale == 4 || scale == 8);
+	
+	if (!base && index && scale == 1 && !disp) {
+		b->reg = index->reg;
+		return;
+	}
 	
 	b->reg = reg_alloc_temp(2, base ? base->reg : NULL, index ? index->reg : NULL);
 	
@@ -134,7 +144,7 @@ void cg_const(struct node *b)
 
 void cg_var(struct node *b)
 {
-	b->reg = reg_get_var(b->symbol);
+	b->reg = reg_get_var(b->symbol, NULL);
 	/* subtract this reference from the remaining ref. count */
 	b->symbol->refcount--;
 	
@@ -153,13 +163,38 @@ void cg_function_call(struct node *b)
 	assert(b);
 	assert(b->symbol);
 	
-	int p_count = 0;
+	out_verbose("FCALL: '%s'", b->symbol->name);
+	
+	/* push caller-saved registers on stack
+	 * (make sure return register is free, so that it doesn't get overwritten afterwards) */
+	reg_relocate(reg_result());
+	const struct reg *rdump = reg_save_fcall();
+	
+	/* evaluate parameters */
+	int i = 0;
 	struct param *p = b->params;
 	
 	while (p) {
-		p_count++;
+		
+		struct reg *r = reg_argument(i);
+		
+		/* make sure that arg register is free */
+		reg_relocate(r);
+		
+		BURM_REG(p->expr, r);
+	
+		i++;
 		p = p->next;
 	}
 	
-	out_verbose("CALL: '%s' (%d arg)", b->symbol->name, p_count);
+	
+	/* call function */
+	out_instr("\tcall\t%s", b->symbol->name);
+	
+	/* restore caller-saved registers on stack */
+	reg_restore_fcall(rdump);
+	
+	/* return value is in result register */
+	b->reg = reg_result();
+	reg_busy(b->reg);
 }

@@ -12,15 +12,15 @@ static struct reg regs[] = {
 	/* 64-bit-name, 8-bit-name, current status, pointer to variable symbol */
 	
 	/* caller saved */
-	{"%rdi", "%dil",  0,         NULL},
-	{"%rsi", "%sil",  0,         NULL},
-	{"%rdx", "%dl",   0,         NULL},
-	{"%rcx", "%cl",   0,         NULL},
-	{"%r8",  "%r8b",  0,         NULL},
-	{"%r9",  "%r9b",  0,         NULL},
-	{"%r10", "%r10b", 0,         NULL},
-	{"%r11", "%r11b", 0,         NULL},
-	{"%rax", "%al",   0,         NULL},
+	{"%rdi", "%dil",  regCALLER, NULL},
+	{"%rsi", "%sil",  regCALLER, NULL},
+	{"%rdx", "%dl",   regCALLER, NULL},
+	{"%rcx", "%cl",   regCALLER, NULL},
+	{"%r8",  "%r8b",  regCALLER, NULL},
+	{"%r9",  "%r9b",  regCALLER, NULL},
+	{"%r10", "%r10b", regCALLER, NULL},
+	{"%r11", "%r11b", regCALLER, NULL},
+	{"%rax", "%al",   regCALLER, NULL},
 	
 	/* callee saved */
 	{"%rbp", "%bpl",  regCALLEE, NULL},
@@ -44,6 +44,7 @@ static struct reg *hint = NULL;
 
 /* flag access macros */
 #define CALLEE(reg)  ((reg)->status & regCALLEE)
+#define CALLER(reg)  ((reg)->status & regCALLER)
 #define TOUCHED(reg) ((reg)->status & regTOUCHED)
 #define BUSY(reg)    ((reg)->status & regBUSY)
 
@@ -156,7 +157,7 @@ void reg_new_function(struct sym *par)
 	reg_alloc_param(par, 0);
 }
 
-struct reg *reg_get_var(struct sym *var)
+struct reg *reg_get_var(struct sym *var, struct reg *candidate)
 {
 	assert(var);
 
@@ -172,7 +173,7 @@ struct reg *reg_get_var(struct sym *var)
 	}
 	
 	/* no register is associated yet - allocate a new one */
-	r = reg_alloc();
+	r = reg_alloc_temp(1, candidate);
 	r->symbol = var;
 	out_verbose("%s Assoc VAR %s: REG %R", reg_busy_graph(), var->name, r);
 	return r;
@@ -225,6 +226,26 @@ void reg_busy(struct reg *r)
 	SET_STATE(r, regTOUCHED);
 }
 
+void reg_relocate(struct reg *r)
+{
+	assert(r);
+	
+	if (!BUSY(r))
+		return;
+	
+	/* alloc new */
+	struct reg *new = reg_alloc();
+	new->symbol = r->symbol;
+	
+	out_verbose("Relocate %R => %R", r, new);
+	
+	/* copy content */
+	out_instr("\tmovq\t%R, %R", r, new);
+	
+	/* free old */
+	reg_free(r);
+}
+
 void reg_free_nonvar() 
 {
 	struct reg *r;
@@ -260,6 +281,44 @@ void reg_restore_callee()
 			out_instr("\tpopq\t%R", r);
 			CLR_STATE(r, regTOUCHED);
 		}
+	}
+}
+
+const struct reg *reg_save_fcall()
+{
+	/* copy current register state to dump */
+	struct reg *dump = calloc(REGNO, sizeof(*dump));
+	MALLOC_CHECK(dump)
+	memcpy(dump, regs, sizeof(regs));
+
+	/* push regs to stack */
+	struct reg *r;
+	ITERATE_REGS(r) {
+		
+		if (CALLER(r) && BUSY(r)) {
+			out_instr("\tpushq\t%R", r);
+			/*reg_free(r);*/
+		}
+	}
+	
+	return dump;
+}
+
+void reg_restore_fcall(const struct reg *dump)
+{
+	/* restore reg state from dump */
+	memcpy(regs, dump, sizeof(regs));
+
+	int i;
+	struct reg *r;
+	
+	/* iterate in reverse direction to pop saved values from stack */
+	for(i = REGNO; i >= 0; --i) {
+		
+		r = &regs[i];
+		
+		if (CALLER(r) && BUSY(r))
+			out_instr("\tpopq\t%R", r);
 	}
 }
 

@@ -34,7 +34,7 @@ void cg_function(char *name, struct sym *pars, struct sym *scope_vars, struct st
 		
 		while (p) {
 			if (p->refcount) {
-				struct reg *r = reg_get_var(p);
+				struct reg *r = reg_get_var(p, NULL);
 				out_verbose("%s PAR %s: REG %R (%d ref. in func.)", reg_busy_graph(), p->name, r, p->refcount);
 			} else
 				out_verbose("%s PAR %s: no reference", reg_busy_graph(), p->name);
@@ -179,7 +179,7 @@ void cg_stat_if_cvardef_creturn(struct node *cond, struct stat *s, int is_return
 	/* evaluate condition */
 	BURM(cond);
 	
-	const struct reg *r = (is_return ? reg_result() : reg_get_var(s->data.var));
+	const struct reg *r = (is_return ? reg_result() : reg_get_var(s->data.var, NULL));
 	
 	if (cond->reg) {
 		
@@ -334,7 +334,7 @@ void cg_stat_vardef(struct stat *s)
 	struct node *expr = s->expr;
 	BURM(expr);
 	
-	struct reg *r = reg_get_var(s->data.var);
+	struct reg *r = reg_get_var(s->data.var, expr->reg);
 	
 	/* move register or value to variable register */
 	if (expr->reg) {
