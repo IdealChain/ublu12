@@ -15,30 +15,22 @@ static struct label *func_end;
  * except when a referenced label comes along) */
 static int in_deadcode;
 
-void cg_program(struct func *fs)
-{
-	while (fs) {
-		cg_function(fs);
-		fs = fs->next;
-	}
-}
-
-void cg_function(struct func *f)
+void cg_function(char *name, struct sym *pars, struct sym *scope_vars, struct stat *body)
 {
 	/* clear anonymous function ending label and deadcode flag */
 	func_end = NULL;
 	in_deadcode = 0;
 	
 	out_instr("\t.text");
-	out_instr(".globl %s", f->name);
-	out_instr("\t.type %s, @function", f->name);
-	struct instr *header = out_instr("%s:", f->name);
+	out_instr(".globl %s", name);
+	out_instr("\t.type %s, @function", name);
+	struct instr *header = out_instr("%s:", name);
 	
 	/* assign parameter registers */
-	reg_new_function(f->pars);
+	reg_new_function(pars);
 	
 	{ /* debug output */
-		struct sym *p = f->pars;
+		struct sym *p = pars;
 		
 		while (p) {
 			if (p->refcount) {
@@ -52,7 +44,7 @@ void cg_function(struct func *f)
 	}
 	
 	/* generate statements */
-	cg_stats(f->body, f->scope_vars);
+	cg_stats(body, scope_vars);
 	
 	/* ensure that the return register gets a value
 	 * (is not really necessary but helps avoiding random results) 
@@ -135,17 +127,7 @@ void cg_stat_return(struct stat *s)
 	assert(s);
 	assert(s->expr);
 	
-	reg_hint_result();
-	BURM(s->expr);
-
-	/* move return value to result register */
-	if (s->expr->reg) {
-		
-		if (s->expr->reg != reg_result())
-			out_instr("\tmovq\t%R, %R", s->expr->reg, reg_result());
-	}
-	else
-		out_instr("\tmovq\t%I, %R", s->expr->value, reg_result());
+	BURM_REG(s->expr, reg_result());
 	
 	/* fetch and place jump to end of current function */
 	if (!func_end)

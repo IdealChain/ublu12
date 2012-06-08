@@ -76,14 +76,16 @@ typedef struct node *NODEPTR_TYPE;
 #define PANIC           printf
 
 /* convenience macros */
-#define BURM(p) burm_label(p); \
-                burm_reduce(p, 1);
+#define BURM(p)       burm(p, NULL);
+#define BURM_REG(p,r) burm(p, r);
 
-#define KIDS(p) (node_nav(bnode, p))
+#define KIDS(p)      (node_nav(bnode, p))
 
-/* forward declaration (extern) */
-struct burm_state *burm_label(struct node *bnode);
-void burm_reduce(struct node *bnode, int goalnt);
+/* labels and reduces the burm expression expr. if target is given, 
+ * the result is guaranteed to be in that register, even if it is 
+ * already in use.
+ */
+void burm(struct node *expr, struct reg *target);
 
 /* generate tree node for iburg */
 struct node *gen_node(int op, struct node *left, struct node *right, long value, struct sym* symbol);

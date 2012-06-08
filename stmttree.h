@@ -39,17 +39,4 @@ struct stat *stat_add_vardef(struct stat *list, struct node *expr, struct sym *v
 struct stat *stat_add_memass(struct stat *list, struct node *expr, struct node *adr);
 struct stat *stat_add_eval(struct stat *list, struct node *expr);
 
-/* function list, used for code generation */
-struct func {
-	char *name;
-	struct sym *pars;       /* parameter symbol table */
-	struct sym *scope_vars; /* variable symbol table of function scope */
-	struct stat *body;      /* function statement tree */
-	
-	struct func *next; /* pointer to next function in list, or NULL */
-};
-
-/* method to add new function to list */
-struct func *func_add(struct func *list, char *name, struct sym *pars, struct sym *scope_vars, struct stat *body);
-
 #endif

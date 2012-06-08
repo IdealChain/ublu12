@@ -37,10 +37,10 @@ void reg_save_callee(struct instr *function_header);
 void reg_restore_callee();
 
 /* gets the function result register */
-const struct reg *const reg_result();
+struct reg *reg_result();
 
-/* hints that the next associated register should be the result register, if it is available */
-void reg_hint_result();
+/* hints that the next associated register should be a specific register, if it is available */
+void reg_hint(struct reg *r);
 
 /* gets an ascii bar indicating the amount of busy registers */
 char *reg_busy_graph();
@@ -54,8 +54,7 @@ struct label *label_anon();
 
 
 /* the code generator functions */
-void cg_program(struct func *fs);
-void cg_function(struct func *f);
+void cg_function(char *name, struct sym *pars, struct sym *scope_vars, struct stat *body);
 void cg_stat(struct stat *s);
 void cg_stats(struct stat *ss, struct sym *scope_vars);
 

@@ -223,14 +223,19 @@ void reg_restore_callee()
 	}
 }
 
-const struct reg *const reg_result()
+struct reg *reg_result()
 {
 	return &regs[8];
 }
 
-void reg_hint_result()
+void reg_hint(struct reg *r)
 {
-	hint = &regs[8];
+	assert(r);
+	
+	if (BUSY(r))
+		out_verbose("W: HINT-REG %R already in use", r);
+	
+	hint = r;
 }
 
 char *reg_busy_graph()

@@ -36,8 +36,8 @@ void check_collisions(struct sym *vars, struct sym *labels);
 
 /* grammar attribute definition
 
-   'i_fs', 's_fs', 'i_ss' and 's_ss' are the inherited and synthesized incomplete lists 
-   that are used to collect all functions and statements to generate code for.
+   'i_ss' and 's_ss' are the inherited and synthesized incomplete lists 
+   that are used to collect all statements to generate code for.
   
    'i_labs', 'i_vars', 's_labs' and 's_vars' are the inherited and synthesized incomplete
    symbol tables that are used to collect all label and variable declarations in the 
@@ -55,7 +55,6 @@ void check_collisions(struct sym *vars, struct sym *labels);
  */
 @autoinh i_flabs i_fvars
 @autosyn n
-@attributes { struct func *i_fs;    struct func *s_fs;                                               } program funcdef
 @attributes { struct sym *i_labs;   struct sym *s_labs;   struct sym *i_flabs;
               struct sym *i_vars;   struct sym *s_vars;   struct sym *i_fvars;
               struct stat *i_ss;    struct stat *s_ss;                                               } stats stat
@@ -65,8 +64,6 @@ void check_collisions(struct sym *vars, struct sym *labels);
 @attributes { struct stat *i_ss;    struct stat *s_ss;    struct sym *i_fvars; struct node *i_rexpr; } lexpr
 @attributes { struct param *i_pars; struct param *s_pars; struct sym *i_fvars;                       } exprlist
 @attributes {                                             struct sym *i_fvars; struct node *n;       } expr plusterm multterm andterm unary term
-
-
 
 /* checks whether referenced labels/parameters/variables exist */
 @traversal @preorder check
@@ -80,20 +77,10 @@ void check_collisions(struct sym *vars, struct sym *labels);
 %%
 
 start	:	program
-		@{ 
-			@i @program.i_fs@ = NULL; 
-			@codegen cg_program(@program.s_fs@); 
-		@}
 	;
 
 program	:	/* empty */
-		@{ @i @program.s_fs@ = @program.i_fs@; @}
 	|	program funcdef ';'
-		@{
-			@i @program.1.i_fs@ = @program.0.i_fs@;
-			@i @funcdef.i_fs@ = @program.1.s_fs@;
-			@i @program.0.s_fs@ = @funcdef.s_fs@;
-		@}
 	;
 
 funcdef	:	IDENT '(' parlist ')' stats END		/* Funktionsdefinition */
@@ -109,9 +96,9 @@ funcdef	:	IDENT '(' parlist ')' stats END		/* Funktionsdefinition */
 			@i @stats.i_fvars@ = @stats.s_vars@;
 			@print sym_print(@stats.s_vars@, "variables", @IDENT.name@);
 			
-			/* add function to list */
+			/* generate function code */
 			@i @stats.i_ss@ = NULL; 
-			@i @funcdef.s_fs@ = func_add(@funcdef.i_fs@, @IDENT.name@, @parlist.s_vars@, @stats.s_vars@, @stats.s_ss@);
+			@codegen cg_function(@IDENT.name@, @parlist.s_vars@, @stats.s_vars@, @stats.s_ss@);
 		@}
 	;	
 

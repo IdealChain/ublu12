@@ -5,7 +5,31 @@
 #include <string.h>
 #include <assert.h>
 
-#include "stmttree.h"
+#include "exprtree.h"
+#include "codegen.h"
+
+/* forward declaration (extern) */
+struct burm_state *burm_label(struct node *bnode);
+void burm_reduce(struct node *bnode, int goalnt);
+
+void burm(struct node *expr, struct reg *target)
+{
+	assert(expr);
+
+	if (target)
+		reg_hint(target);
+
+	burm_label(expr);
+	burm_reduce(expr, 1);
+
+	if (target) {
+		/* move register or immediate value to target reg, if hint did not work */
+		if (expr->reg && expr->reg != target)
+			out_instr("\tmovq\t%R, %R", expr->reg, target);
+		else if (!expr->reg)
+			out_instr("\tmovq\t%I, %R", expr->value, target);
+	}
+}
 
 struct node *gen_node(int op, struct node *left, struct node *right, long value, struct sym* symbol)
 {
