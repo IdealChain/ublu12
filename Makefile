@@ -58,7 +58,8 @@ matcher.c: matcher.bfe
 .PHONY: clean test
 clean:
 	$(RM) $(TARGET) $(GENSRCS) $(DEPS) $(ALLOBJS) *.output oxout.* y.tab.h func func.1.o func.2.o
-	
+
+# testing targets
 test: $(TARGET)
 	/usr/ftp/pub/ubvl/test/$(TARGET)/test | ./color.py
 
