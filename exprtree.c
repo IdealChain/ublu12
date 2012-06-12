@@ -24,10 +24,8 @@ void burm(struct node *expr, struct reg *target)
 
 	if (target) {
 		/* move register or immediate value to target reg, if hint did not work */
-		if (expr->reg && expr->reg != target) {
-			out_instr("\tmovq\t%R, %R", expr->reg, target);
-			reg_free(expr->reg);
-		}
+		if (expr->reg && expr->reg != target)
+			reg_move(expr->reg, target);
 		else if (!expr->reg)
 			out_instr("\tmovq\t%I, %R", expr->value, target);
 		

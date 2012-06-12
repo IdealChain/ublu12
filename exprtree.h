@@ -36,6 +36,14 @@ struct reg {
 	struct sym *symbol;    /* associated variable symbol or NULL, if register is not used or temporary */
 };
 
+/* variable on stack */
+struct stackvar {
+	long disp;             /* displacement from %rbp register */
+	struct sym *symbol;    /* associated variable symbol */
+	
+	struct stackvar *next; /* next element in linked list */
+};
+
 /* list of generated assembler labels */
 struct label {
 	unsigned int nr;    /* label number in outputted asm code (unique) */

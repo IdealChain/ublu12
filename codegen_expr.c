@@ -144,12 +144,20 @@ void cg_const(struct node *b)
 
 void cg_var(struct node *b)
 {
-	b->reg = reg_get_var(b->symbol, NULL);
+	/* check if var is in stack */
+	struct stackvar *s = stack_get_var(b->symbol);
+	if (s) {
+	
+		b->reg = reg_alloc();
+		out_instr("\tmovq\t%ld(%s), %R", s->disp, "%rbp", b->reg);
+		
+	} else {
+	
+		b->reg = reg_get_var(b->symbol, NULL);
+	}
+	
 	/* subtract this reference from the remaining ref. count */
 	b->symbol->refcount--;
-	
-	/*out_verbose("Ref. VAR %s (REG %R, %d left)",
-		b->symbol->name, b->reg, b->symbol->refcount); */
 }
 
 void cg_radr(struct node *b, struct node *l)
@@ -176,17 +184,25 @@ void cg_function_call(struct node *b)
 	
 	while (p) {
 		
-		struct reg *r = reg_argument(i);
+		BURM(p->expr);
 		
-		/* make sure that arg register is free */
-		reg_relocate(r);
+		if (!p->expr->reg) {
+			p->expr->reg = reg_alloc();
+			out_instr("\tmovq\t%I, %R", p->expr->value, p->expr->reg);
+		}
 		
-		BURM_REG(p->expr, r);
+		stack_push(p->expr->reg);
 	
 		i++;
 		p = p->next;
 	}
 	
+	/* before call: pop args back */
+	while (i) {
+		i--;
+		struct reg *r = reg_argument(i);
+		stack_pop(r);
+	}
 	
 	/* call function */
 	out_instr("\tcall\t%s", b->symbol->name);

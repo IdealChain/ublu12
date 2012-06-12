@@ -20,7 +20,7 @@ LEX_NOWARN = -Wno-unused-variable -Wno-unused-function
 PAR_NOWARN = -Wno-unused-variable -Wno-implicit -Wno-format -Wno-parentheses
 
 # not generated and generated C source files
-SRCS = common.c symtable.c exprtree.c stmttree.c codegen.c codegen_expr.c codegen_reg.c codegen_label.c output.c
+SRCS = common.c symtable.c exprtree.c stmttree.c codegen.c codegen_expr.c codegen_reg.c codegen_stack.c codegen_label.c output.c
 GENSRCS = lex.yy.c y.tab.c matcher.c
 
 ALLSRCS = $(SRCS) $(GENSRCS)
@@ -60,7 +60,7 @@ clean:
 	$(RM) $(TARGET) $(GENSRCS) $(DEPS) $(ALLOBJS) *.output oxout.* y.tab.h func func.1.o func.2.o
 	
 test: $(TARGET)
-	/usr/ftp/pub/ubvl/test/$(TARGET)/test
+	/usr/ftp/pub/ubvl/test/$(TARGET)/test | ./color.py
 
 .PRECIOUS: func
 func: func.1.o func.2.o

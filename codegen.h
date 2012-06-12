@@ -35,12 +35,15 @@ void reg_busy(struct reg *r);
 /* ensures that a register is available, moving its content */
 void reg_relocate(struct reg *r);
 
+/* moves the content of one register to another one */
+void reg_move(struct reg *from, struct reg *to);
+
 /* marks all non-variable (temporary) registers as free */
 void reg_free_nonvar();
 
 /* saves all callee saved registers that have been touched */
 /* (is called after the function code is generated, but inserts its code after the function header) */
-void reg_save_callee(struct instr *function_header);
+struct instr *reg_save_callee(struct instr *function_header);
 
 /* restore all callee saved registers */
 void reg_restore_callee();
@@ -62,6 +65,25 @@ void reg_hint(struct reg *r);
 
 /* gets an ascii bar indicating the amount of currently busy registers */
 char *reg_busy_graph();
+
+
+/* resets the current stack state */
+void stack_new_function();
+
+/* reserves space on the stack */
+struct instr *stack_reservespace(struct instr *function_header);
+
+/* returns the reserved space */
+void stack_returnspace();
+
+/* pushes register content onto the stack */
+struct stackvar *stack_push(struct reg *r);
+
+/* pops a stack value to a register */
+void stack_pop(struct reg *r);
+
+/* gets a stack struct associated to a variable. NULL if not found */
+struct stackvar *stack_get_var(struct sym *var);
 
 
 /* gets an asm label for a input label; will be generated if necessary */

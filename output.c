@@ -254,7 +254,7 @@ void out_flush()
 		
 		if (f) {
 			if (param_verbose) 
-				fprintf(stderr, "# F: %s\n", i->output);
+				printf("# F: %s\n", i->output);
 		}
 		else
 			puts(i->output);

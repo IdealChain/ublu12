@@ -28,6 +28,7 @@ void cg_function(char *name, struct sym *pars, struct sym *scope_vars, struct st
 	
 	/* assign parameter registers */
 	reg_new_function(pars);
+	stack_new_function();
 	
 	{ /* debug output */
 		struct sym *p = pars;
@@ -56,10 +57,12 @@ void cg_function(char *name, struct sym *pars, struct sym *scope_vars, struct st
 	if (func_end)
 		out_lbl(func_end);
 	
-	/* insert instructions to save callee registers after function header */
-	reg_save_callee(header);
+	/* insert instructions to save callee registers and reserve stack space after function header */
+	header = reg_save_callee(header);
+	header = stack_reservespace(header);
 	
-	/* ...and restore instructions before function return */
+	/* restore stack space and callee saved registers before return */
+	stack_returnspace();
 	reg_restore_callee();
 	
 	out_instr("\tret\n");
@@ -333,6 +336,17 @@ void cg_stat_vardef(struct stat *s)
 	
 	struct node *expr = s->expr;
 	BURM(expr);
+	
+	/* check if var is in stack */
+	struct stackvar *sv = stack_get_var(s->data.var);
+	if (sv) {
+		if (expr->reg)
+			out_instr("\tmovq\t%R, %ld(%s)", expr->reg, sv->disp, "%rbp");
+		else
+			out_instr("\tmovq\t%I, %ld(%s)", expr->value, sv->disp, "%rbp");
+		
+		return;
+	}
 	
 	struct reg *r = reg_get_var(s->data.var, expr->reg);
 	
