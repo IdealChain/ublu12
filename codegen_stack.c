@@ -76,7 +76,7 @@ struct stackvar *stack_push(struct reg *r)
 	s->symbol = r->symbol;
 	
 	/* move value */
-	out_instr("\tmovq\t%R, %ld(%s)", r, s->disp, "%rbp");
+	out_instr("\tmovq\t%R, %S", r, s);
 	reg_free(r);
 	
 	return s;
@@ -88,7 +88,7 @@ struct stackvar *stack_push_immediate(long value)
 	struct stackvar *s = stack_alloc();
 	
 	/* move value */
-	out_instr("\tmovq\t%I, %ld(%s)", value, s->disp, "%rbp");
+	out_instr("\tmovq\t%I, %S", value, s);
 	
 	return s;
 }
@@ -103,7 +103,7 @@ void stack_pop(struct reg *r)
 	head = s->next;
 	
 	/* move value */
-	out_instr("\tmovq\t%ld(%s), %R", s->disp, "%rbp", r);
+	out_instr("\tmovq\t%S, %R", s, r);
 	reg_busy(r);
 }
 

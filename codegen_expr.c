@@ -149,7 +149,7 @@ void cg_var(struct node *b)
 	if (s) {
 	
 		b->reg = reg_alloc();
-		out_instr("\tmovq\t%ld(%s), %R", s->disp, "%rbp", b->reg);
+		out_instr("\tmovq\t%S, %R", s, b->reg);
 		
 	} else {
 	
@@ -190,6 +190,8 @@ void cg_function_call(struct node *b)
 			stack_push_immediate(p->expr->value);
 		else
 			stack_push(p->expr->reg);
+		
+		reg_free_nonvar();
 		
 		i++;
 		p = p->next;

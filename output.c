@@ -46,6 +46,13 @@ int conv_byte_register(char *str, size_t size, va_list va)
 	return snprintf(str, size, "%s", r->name_b);
 }
 
+/* Converter for %S: stack address (displacement to %rbp register) */
+int conv_stack(char *str, size_t size, va_list va)
+{
+	struct stackvar *s = va_arg(va, struct stackvar*);
+	return snprintf(str, size, "%ld(%s)", s->disp, "%rbp");
+}
+
 converter find_conv(char specifier) 
 {
 	switch(specifier) {
@@ -57,6 +64,8 @@ converter find_conv(char specifier)
 			return conv_register;
 		case 'B':
 			return conv_byte_register;
+		case 'S':
+			return conv_stack;
 		default:
 			return NULL;
 	};
