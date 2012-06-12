@@ -13,7 +13,7 @@ int main(int argc, char **argv)
 	return 0;
 }
 
-long called(long arg1, long arg2)
+long called(long arg, long arg2)
 {
-	return 2 * arg1;
+	return 2 * arg;
 }

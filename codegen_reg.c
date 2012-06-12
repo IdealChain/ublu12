@@ -174,7 +174,7 @@ struct reg *reg_get_var(struct sym *var, struct reg *candidate)
 {
 	assert(var);
 
-	/* find register associated to variable */
+	/* 1. find variable in registers */
 	ITERATE_REGS(r, {
 		
 		/* compare by name string
@@ -184,10 +184,19 @@ struct reg *reg_get_var(struct sym *var, struct reg *candidate)
 			return r;
 	})
 	
-	/* no register is associated yet - allocate a new one */
+	/* 2. find variable in stack */
+	struct stackvar *s = stack_get_var(var);
+	if (s) {
+		struct reg *r = reg_alloc_temp(1, candidate);
+		r->symbol = s->symbol;
+		out_instr("\tmovq\t%S, %R", s, r);
+		return r;
+	}
+	
+	/* 3. no register is associated yet - allocate a new one */
 	struct reg *r = reg_alloc_temp(1, candidate);
 	r->symbol = var;
-	out_verbose("%s Assoc VAR %s: REG %R", reg_busy_graph(), var->name, r);
+	out_verbose("%s Alloc VAR %s: REG %R", reg_busy_graph(), var->name, r);
 	return r;
 }
 
@@ -246,6 +255,7 @@ void reg_relocate(struct reg *r)
 	
 	/* alloc new */
 	struct reg *new = reg_alloc();
+	out_verbose("Relocate %R => %R", r, new);
 	reg_move(r, new);
 }
 
@@ -258,7 +268,6 @@ void reg_move(struct reg *from, struct reg *to)
 		return;
 	
 	/* copy content */
-	out_verbose("Relocate %R => %R", from, to);
 	out_instr("\tmovq\t%R, %R", from, to);
 	
 	/* copy metadata */
@@ -311,8 +320,10 @@ const struct reg *reg_save_fcall()
 
 	/* push regs to stack */
 	ITERATE_REGS(r, {
-		if (CALLER(r) && BUSY(r) && !TEMP(r))
+		if (CALLER(r) && BUSY(r) && !TEMP(r)) {
 			stack_push(r);
+			reg_free(r);
+		}
 	})
 	
 	return dump;

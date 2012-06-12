@@ -337,13 +337,13 @@ void cg_stat_vardef(struct stat *s)
 	struct node *expr = s->expr;
 	BURM(expr);
 	
-	/* check if var is in stack */
+	/* check if var is in stack - shortcut */
 	struct stackvar *sv = stack_get_var(s->data.var);
 	if (sv) {
 		if (expr->reg)
-			out_instr("\tmovq\t%R, %ld(%s)", expr->reg, sv->disp, "%rbp");
+			out_instr("\tmovq\t%R, %S", expr->reg, sv);
 		else
-			out_instr("\tmovq\t%I, %ld(%s)", expr->value, sv->disp, "%rbp");
+			out_instr("\tmovq\t%I, %S", expr->value, sv);
 		
 		return;
 	}

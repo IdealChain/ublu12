@@ -23,6 +23,9 @@ void burm(struct node *expr, struct reg *target)
 	burm_reduce(expr, 1);
 
 	if (target) {
+		/* invalidate target reg */
+		reg_free(target);
+	
 		/* move register or immediate value to target reg, if hint did not work */
 		if (expr->reg && expr->reg != target)
 			reg_move(expr->reg, target);

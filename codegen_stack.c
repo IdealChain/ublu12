@@ -77,7 +77,6 @@ struct stackvar *stack_push(struct reg *r)
 	
 	/* move value */
 	out_instr("\tmovq\t%R, %S", r, s);
-	reg_free(r);
 	
 	return s;
 }
@@ -105,6 +104,7 @@ void stack_pop(struct reg *r)
 	/* move value */
 	out_instr("\tmovq\t%S, %R", s, r);
 	reg_busy(r);
+	r->symbol = s->symbol;
 }
 
 struct stackvar *stack_get_var(struct sym *var)
@@ -112,6 +112,9 @@ struct stackvar *stack_get_var(struct sym *var)
 	struct stackvar *s = head;
 	
 	while (s) {
+		/* compare by name string
+		 * (sym struct could have been duplicated by sym_concat) 
+		 */
 		if (s->symbol && s->symbol->name == var->name)
 			return s;
 		

@@ -144,17 +144,7 @@ void cg_const(struct node *b)
 
 void cg_var(struct node *b)
 {
-	/* check if var is in stack */
-	struct stackvar *s = stack_get_var(b->symbol);
-	if (s) {
-	
-		b->reg = reg_alloc();
-		out_instr("\tmovq\t%S, %R", s, b->reg);
-		
-	} else {
-	
-		b->reg = reg_get_var(b->symbol, NULL);
-	}
+	b->reg = reg_get_var(b->symbol, NULL);
 	
 	/* subtract this reference from the remaining ref. count */
 	b->symbol->refcount--;
@@ -179,28 +169,37 @@ void cg_function_call(struct node *b)
 	const struct reg *rdump = reg_save_fcall();
 	
 	/* evaluate parameters */
-	int i = 0;
+	int stackparams = 0;
 	struct param *p = b->params;
 	
 	while (p) {
 		
-		BURM(p->expr);
+		if (p->next) {
 		
-		if (!p->expr->reg)
-			stack_push_immediate(p->expr->value);
-		else
-			stack_push(p->expr->reg);
+			/* evaluate parameter and preserve result on stack */
+			BURM(p->expr);
+			
+			if (!p->expr->reg)
+				stack_push_immediate(p->expr->value);
+			else
+				stack_push(p->expr->reg);
+			
+			stackparams++;
+			
+		} else {
+		
+			/* last/only parameter - no stack pushing required */
+			BURM_REG(p->expr, reg_argument(stackparams));
+		}
 		
 		reg_free_nonvar();
-		
-		i++;
 		p = p->next;
 	}
 	
 	/* before call: pop args back */
-	while (i) {
-		i--;
-		struct reg *r = reg_argument(i);
+	while (stackparams) {
+		stackparams--;
+		struct reg *r = reg_argument(stackparams);
 		stack_pop(r);
 	}
 	
@@ -213,4 +212,6 @@ void cg_function_call(struct node *b)
 	/* return value is in result register */
 	b->reg = reg_result();
 	reg_busy(b->reg);
+	
+	out_verbose("END FCALL: '%s'", b->symbol->name);
 }
