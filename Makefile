@@ -68,7 +68,7 @@ func: func.1.o func.2.o
 	./$@
 
 func.1.o: func.0 $(TARGET)
-	./$(TARGET) -v < $<
+	./$(TARGET) -v < $< | ./color.py
 	./$(TARGET) < $< | as -o $@
 
 func.2.o: func.c
