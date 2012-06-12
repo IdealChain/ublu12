@@ -20,7 +20,7 @@ DEC	&[0-9]+
 
 %%
 
-"(*"(.*|[ \n\t])*"*)"	; /* eat comments */
+"(*"(.*|[ \t\n])*"*)"; /* eat comments */
 
 "end"		return END;
 "return"	return RETURN;
@@ -53,8 +53,9 @@ DEC	&[0-9]+
 				@IDENT.lineno@ = yylineno;
 			@}
 
-[ \t\n]	; /* whitespace be-gone */
-.	error(); /* everything else */
+[ \t\n]	;        /* eat whitespace */
+
+.	error(); /* anything else is not expected */
 
 %%
 
