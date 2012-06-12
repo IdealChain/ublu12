@@ -39,10 +39,8 @@ void stack_returnspace()
 		out_instr("\tleave");
 }
 
-struct stackvar *stack_push(struct reg *r)
+struct stackvar *stack_alloc()
 {
-	assert(r);
-	
 	/* get current position, relative to %rbp */
 	long pos = (head ? head->disp : 0);
 	pos -= sizeof(long);
@@ -52,11 +50,10 @@ struct stackvar *stack_push(struct reg *r)
 		stackframe_reserve = -pos;
 	
 	/* data structure */
-	struct stackvar *s = malloc(sizeof(*s));
+	struct stackvar *s = calloc(1, sizeof(*s));
 	MALLOC_CHECK(s)
 	
 	s->disp = pos;
-	s->symbol = r->symbol;
 	
 	/* linked list grows to the front */
 	if (head) {
@@ -67,9 +64,31 @@ struct stackvar *stack_push(struct reg *r)
 		head = s;
 	}
 	
+	return s;
+}
+
+struct stackvar *stack_push(struct reg *r)
+{
+	assert(r);
+	
+	/* data structure */
+	struct stackvar *s = stack_alloc();
+	s->symbol = r->symbol;
+	
 	/* move value */
 	out_instr("\tmovq\t%R, %ld(%s)", r, s->disp, "%rbp");
 	reg_free(r);
+	
+	return s;
+}
+
+struct stackvar *stack_push_immediate(long value)
+{
+	/* data structure */
+	struct stackvar *s = stack_alloc();
+	
+	/* move value */
+	out_instr("\tmovq\t%I, %ld(%s)", value, s->disp, "%rbp");
 	
 	return s;
 }

@@ -1,4 +1,4 @@
 func(a)
-	var b = called(a, a);
+	var b = called(a, 0);
 	return b;
 end;

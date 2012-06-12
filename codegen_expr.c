@@ -186,13 +186,11 @@ void cg_function_call(struct node *b)
 		
 		BURM(p->expr);
 		
-		if (!p->expr->reg) {
-			p->expr->reg = reg_alloc();
-			out_instr("\tmovq\t%I, %R", p->expr->value, p->expr->reg);
-		}
+		if (!p->expr->reg)
+			stack_push_immediate(p->expr->value);
+		else
+			stack_push(p->expr->reg);
 		
-		stack_push(p->expr->reg);
-	
 		i++;
 		p = p->next;
 	}

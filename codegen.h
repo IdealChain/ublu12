@@ -79,6 +79,9 @@ void stack_returnspace();
 /* pushes register content onto the stack */
 struct stackvar *stack_push(struct reg *r);
 
+/* pushes an immediate value onto the stack */
+struct stackvar *stack_push_immediate(long value);
+
 /* pops a stack value to a register */
 void stack_pop(struct reg *r);
 
