@@ -110,4 +110,8 @@ struct param *add_param(struct param *list, struct node *expr);
  */
 struct node* node_nav(struct node *b, char *path);
 
+/* helper function that returns whether this expression tree contains
+ * function calls (which could cause side effects) */
+int node_sideeffects(struct node *b);
+
 #endif

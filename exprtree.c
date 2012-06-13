@@ -111,3 +111,14 @@ struct node* node_nav(struct node *b, char *path)
 	
 	return b;
 }
+
+int node_sideeffects(struct node *b)
+{
+	if (!b)
+		return 0;
+	
+	if (b->op == opCALL)
+		return 1;
+
+	return (node_sideeffects(LEFT_CHILD(b)) || node_sideeffects(RIGHT_CHILD(b)));
+}

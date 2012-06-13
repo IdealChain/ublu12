@@ -267,8 +267,9 @@ void cg_stat_if(struct stat *s)
 		return;
 	
 	/* if there's only one statement in the body, it can be 
-	 * simplified to a cmov or cjmp. */
-	if (s->data.body && s->data.body->next == NULL) {
+	 * simplified to a cmov or cjmp. except when it contains side effects,
+	 * then it must not be evaluated if the if condition is not met. */
+	if (s->data.body && s->data.body->next == NULL && !node_sideeffects(s->data.body->expr)) {
 		
 		switch(s->data.body->type) {
 		

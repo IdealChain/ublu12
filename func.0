@@ -1,4 +1,10 @@
-func(a)
-	var b = called(a, a);
-	return b;
+ggt(a,b)
+  if a#b then
+    if a=<b then
+      print(a,b);
+      return ggt_print(b,a);
+    end;
+    return ggt_print(a+(-b),b);
+  end;
+  return a;
 end;
