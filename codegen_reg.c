@@ -35,6 +35,7 @@ static struct reg *hint = NULL;
 
 /* number of available registers */
 #define REGNO (sizeof(regs) / sizeof(regs[0]))
+#define REGNO_CALLER 9
 
 /* loops to iterate over all registers */
 #define ITERATE_REGS(register, body) \
@@ -314,9 +315,9 @@ void reg_restore_callee()
 const struct reg *reg_save_fcall()
 {
 	/* copy current caller register state to dump */
-	struct reg *dump = calloc(REGNO, sizeof(*dump));
+	struct reg *dump = calloc(REGNO_CALLER, sizeof(*dump));
 	MALLOC_CHECK(dump)
-	memcpy(dump, regs, REGNO * sizeof(*dump));
+	memcpy(dump, regs, REGNO_CALLER * sizeof(*dump));
 
 	/* push regs to stack */
 	ITERATE_REGS(r, {
@@ -332,7 +333,7 @@ const struct reg *reg_save_fcall()
 void reg_restore_fcall(const struct reg *dump)
 {
 	/* restore caller reg state from dump */
-	memcpy(regs, dump, REGNO * sizeof(*dump));
+	memcpy(regs, dump, REGNO_CALLER * sizeof(*dump));
 	
 	/* iterate in reverse direction to pop saved values from stack */
 	ITERATE_REGS_REVERSE(r, {
